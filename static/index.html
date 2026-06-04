@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ Прогнозы ЧМ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00c853;
+    --green-dark: #00a040;
+    --bg: #0a0e0a;
+    --surface: #121812;
+    --surface2: #1a221a;
+    --border: #2a382a;
+    --text: #e8f0e8;
+    --muted: #6b7d6b;
+    --gold: #ffd600;
+    --red: #ff3d3d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* LOGIN */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(ellipse at 50% 0%, #0d2a0d 0%, var(--bg) 70%);
+  }
+  .login-box {
+    width: 100%;
+    max-width: 380px;
+  }
+  .login-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 64px;
+    line-height: 1;
+    color: var(--green);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .login-sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 40px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .login-box input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 15px;
+    color: var(--text);
+    font-family: inherit;
+    outline: none;
+    margin-bottom: 12px;
+    transition: border-color .2s;
+  }
+  .login-box input:focus { border-color: var(--green); }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+    font-family: inherit;
+  }
+  .btn:hover { background: var(--green-dark); }
+  .btn:active { transform: scale(.97); }
+  .btn-full { width: 100%; }
+  .btn-sm { padding: 8px 16px; font-size: 13px; }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-ghost:hover { background: var(--surface2); }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #cc2020; }
+
+  /* MAIN APP */
+  #app { display: none; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    color: var(--green);
+    letter-spacing: 1px;
+  }
+  .header-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .header-user strong { color: var(--text); }
+
+  nav {
+    display: flex;
+    gap: 4px;
+    padding: 16px 24px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 8px 18px 12px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color .2s, border-color .2s;
+  }
+  .tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  main { padding: 24px; max-width: 720px; margin: 0 auto; }
+
+  /* SECTION */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* MATCH CARD */
+  .match-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 12px;
+    transition: border-color .2s;
+  }
+  .match-card:hover { border-color: #3a4e3a; }
+  .match-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .teams {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 1px;
+  }
+  .match-time {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .status-upcoming { background: #1a2e1a; color: var(--green); }
+  .status-live { background: #2e1a1a; color: var(--red); }
+  .status-finished { background: #1e1e1e; color: var(--muted); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status-live .dot { animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .result-score {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--gold);
+    margin-bottom: 12px;
+  }
+
+  .predict-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .score-input {
+    width: 54px;
+    height: 44px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 20px;
+    font-family: 'Bebas Neue', sans-serif;
+    color: var(--text);
+    outline: none;
+    transition: border-color .2s;
+  }
+  .score-input:focus { border-color: var(--green); }
+  .score-sep { font-size: 20px; color: var(--muted); font-weight: 700; }
+
+  .my-pred {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 14px;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .my-pred strong { color: var(--text); font-size: 16px; font-family: 'Bebas Neue'; letter-spacing:1px; }
+
+  .pred-pts { padding: 2px 8px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .pts-3 { background: #0d2a0d; color: var(--green); }
+  .pts-1 { background: #2a220d; color: #ffa500; }
+  .pts-0 { background: #1e1e1e; color: var(--muted); }
+
+  /* PREDICTIONS LIST */
+  .preds-list { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .pred-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    border-bottom: 1px solid #1a221a;
+  }
+  .pred-row:last-child { border-bottom: none; }
+
+  /* LEADERBOARD */
+  .lb-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .lb-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 60px 50px 50px;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-row.header { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; background: var(--surface2); }
+  .lb-rank { font-family: 'Bebas Neue'; font-size: 20px; color: var(--muted); }
+  .lb-rank.r1 { color: var(--gold); }
+  .lb-rank.r2 { color: #c0c0c0; }
+  .lb-rank.r3 { color: #cd7f32; }
+  .lb-pts { font-family: 'Bebas Neue'; font-size: 22px; color: var(--green); text-align:right; }
+  .lb-stat { color: var(--muted); text-align: center; font-size: 13px; }
+
+  /* ADMIN */
+  .admin-section { margin-bottom: 32px; }
+  .admin-section h3 {
+    font-family: 'Bebas Neue'; font-size: 22px; letter-spacing:1px;
+    color: var(--green); margin-bottom: 14px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  }
+  .form-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .form-row input, .form-row select {
+    flex: 1;
+    min-width: 120px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    color: var(--text);
+    font-family: inherit;
+    outline: none;
+  }
+  .form-row input:focus, .form-row select:focus { border-color: var(--green); }
+  .form-row select option { background: var(--surface); }
+
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .admin-table th {
+    text-align: left; padding: 8px 12px;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .admin-table td { padding: 10px 12px; border-bottom: 1px solid #1a221a; vertical-align: middle; }
+  .admin-table tr:last-child td { border-bottom: none; }
+  .token-cell {
+    font-family: monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: all;
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 14px;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+
+  .empty { text-align: center; padding: 48px 24px; color: var(--muted); font-size: 15px; }
+  .empty .big { font-size: 48px; margin-bottom: 12px; }
+
+  @media (max-width: 500px) {
+    .lb-row { grid-template-columns: 30px 1fr 50px 40px; }
+    .lb-row .lb-stat:last-child { display: none; }
+    main { padding: 16px; }
+    header { padding: 0 16px; }
+    nav { padding: 12px 16px 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">⚽ ЧМ</div>
+    <div class="login-sub">Турнир прогнозов</div>
+    <input type="text" id="token-input" placeholder="Твой токен" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="btn btn-full" onclick="login()">Войти</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-logo">⚽ ЧМ Прогнозы</div>
+    <div class="header-user">
+      <span>Привет, <strong id="user-name">...</strong></span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Выйти</button>
+    </div>
+  </header>
+  <nav>
+    <div class="tab active" onclick="showTab('matches')">Матчи</div>
+    <div class="tab" onclick="showTab('leaderboard')">Рейтинг</div>
+    <div class="tab" id="admin-tab" style="display:none" onclick="showTab('admin')">⚙ Админ</div>
+  </nav>
+  <main>
+    <!-- MATCHES -->
+    <div id="section-matches" class="section active">
+      <div id="matches-list"></div>
+    </div>
+
+    <!-- LEADERBOARD -->
+    <div id="section-leaderboard" class="section">
+      <div id="lb-content"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="section-admin" class="section">
+      <!-- Add player -->
+      <div class="admin-section">
+        <h3>Участники</h3>
+        <div class="form-row">
+          <input id="p-name" placeholder="Имя участника">
+          <button class="btn" onclick="addPlayer()">Добавить</button>
+        </div>
+        <table class="admin-table">
+          <thead><tr>
+            <th>Имя</th><th>Токен (ссылка)</th><th>Telegram</th><th></th>
+          </tr></thead>
+          <tbody id="players-table"></tbody>
+        </table>
+      </div>
+      <!-- Add match -->
+      <div class="admin-section">
+        <h3>Добавить матч</h3>
+        <div class="form-row">
+          <input id="m-home" placeholder="Команда 1 (хозяева)">
+          <input id="m-away" placeholder="Команда 2 (гости)">
+          <input id="m-time" type="datetime-local">
+          <button class="btn" onclick="addMatch()">Добавить</button>
+        </div>
+      </div>
+      <!-- Matches admin -->
+      <div class="admin-section">
+        <h3>Управление матчами</h3>
+        <div id="admin-matches-list"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ADMIN_TOKEN = localStorage.getItem('admin_token');
+
+let state = {
+  token: localStorage.getItem('player_token') || '',
+  playerName: '',
+  isAdmin: false,
+  adminToken: ''
+};
+
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+async function api(path, opts={}) {
+  const sep = path.includes('?') ? '&' : '?';
+  const url = opts.noToken ? path : `${path}${sep}token=${state.token}`;
+  const res = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(state.isAdmin ? {'x-admin-token': state.adminToken} : {})
+    },
+    ...opts
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({detail: 'Ошибка'}));
+    throw new Error(err.detail || 'Ошибка');
+  }
+  return res.json();
+}
+
+async function login() {
+  const input = document.getElementById('token-input').value.trim();
+  if (!input) return;
+
+  // Check if admin token
+  const adminCheck = await fetch('/api/admin/players', {
+    headers: {'x-admin-token': input}
+  });
+
+  if (adminCheck.ok) {
+    state.isAdmin = true;
+    state.adminToken = input;
+    // Admin still needs a player token to browse
+    const players = await adminCheck.json();
+    if (players.length > 0) {
+      state.token = players[0].token;
+    }
+    state.playerName = 'Админ';
+    enterApp();
+    return;
+  }
+
+  // Try as player
+  state.token = input;
+  try {
+    const me = await api('/api/me');
+    state.playerName = me.name;
+    localStorage.setItem('player_token', input);
+    enterApp();
+  } catch(e) {
+    toast('Неверный токен', 'error');
+  }
+}
+
+function enterApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-name').textContent = state.playerName;
+  if (state.isAdmin) {
+    document.getElementById('admin-tab').style.display = '';
+  }
+  loadMatches();
+}
+
+function logout() {
+  localStorage.removeItem('player_token');
+  location.reload();
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const tabs = ['matches','leaderboard','admin'];
+    t.classList.toggle('active', tabs[i]===name);
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  if (name==='leaderboard') loadLeaderboard();
+  if (name==='admin') loadAdmin();
+}
+
+// ── MATCHES ──
+async function loadMatches() {
+  try {
+    const matches = await api('/api/matches');
+    const el = document.getElementById('matches-list');
+    if (!matches.length) {
+      el.innerHTML = '<div class="empty"><div class="big">📅</div>Матчей пока нет</div>';
+      return;
+    }
+    el.innerHTML = matches.map(m => renderMatch(m)).join('');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function renderMatch(m) {
+  const statusLabel = {upcoming:'Скоро', live:'Идёт', finished:'Завершён'}[m.status];
+  const statusClass = `status-${m.status}`;
+  const dt = new Date(m.match_time);
+  const timeStr = dt.toLocaleString('ru', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+
+  let resultHtml = '';
+  if (m.status === 'finished') {
+    resultHtml = `<div class="result-score">${m.home_score} : ${m.away_score}</div>`;
+  }
+
+  let predHtml = '';
+  if (m.my_prediction) {
+    const pts = m.status === 'finished' ? '' : '';
+    predHtml = `<div class="my-pred">Твой прогноз: <strong>${m.my_prediction.home}:${m.my_prediction.away}</strong></div>`;
+  } else if (m.status === 'upcoming') {
+    predHtml = `
+      <div class="predict-row">
+        <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="0">
+        <span class="score-sep">:</span>
+        <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="0">
+        <button class="btn btn-sm" onclick="submitPred(${m.id})">Поставить</button>
+      </div>`;
+  }
+
+  let predsSection = '';
+  if (m.status !== 'upcoming' || m.my_prediction) {
+    predsSection = `<div id="preds-${m.id}">
+      <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="togglePreds(${m.id})">Прогнозы ▾</button>
+      <div id="preds-list-${m.id}" style="display:none"></div>
+    </div>`;
+  }
+
+  return `
+  <div class="match-card" id="match-${m.id}">
+    <div class="match-header">
+      <div class="teams">${m.home_team} <span style="color:var(--muted)">vs</span> ${m.away_team}</div>
+      <div class="match-time">
+        ${timeStr}<br>
+        <span class="status-badge ${statusClass}"><span class="dot"></span>${statusLabel}</span>
+      </div>
+    </div>
+    ${resultHtml}${predHtml}${predsSection}
+  </div>`;
+}
+
+async function submitPred(matchId) {
+  const h = parseInt(document.getElementById(`h-${matchId}`).value);
+  const a = parseInt(document.getElementById(`a-${matchId}`).value);
+  if (isNaN(h)||isNaN(a)||h<0||a<0) { toast('Введи счёт', 'error'); return; }
+  try {
+    await api(`/api/predict/${matchId}`, {
+      method:'POST',
+      body: JSON.stringify({token:state.token, home_score:h, away_score:a})
+    });
+    toast('Прогноз принят! 🎯');
+    loadMatches();
+  } catch(e) { toast(e.message,'error'); }
+}
+
+async function togglePreds(matchId) {
+  const el = document.getElementById(`preds-list-${matchId}`);
+  if (el.style.display !== 'none') { el.style.display='none'; return; }
+  try {
+    const data = await api(`/api/match/${matchId}/predictions`);
+    if (data.hidden) {
+      el.innerHTML = `<div style="margin-top:8px;font-size:13px;color:var(--muted)">${data.reason}</div>`;
+    } else {
+      el.innerHTML = `<div class="preds-list">${data.predictions.map(p=>`
+        <div class="pred-row">
+          <span>${p.name}</span>
+          <span style="font-family:'Bebas Neue';font-size:16px">${p.home_score}:${p.away_score}</span>
+          ${data.match.status==='finished'?`<span class="pred-pts pts-${p.points}">${p.points} очк.</span>`:''}
+        </div>`).join('')}
+      </div>`;
+    }
+    el.style.display = 'block';
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── LEADERBOARD ──
+async function loadLeaderboard() {
+  try {
+    const rows = await api('/api/leaderboard');
+    const medals = ['🥇','🥈','🥉'];
+    document.getElementById('lb-content').innerHTML = `
+      <div class="lb-card">
+        <div class="lb-row header">
+          <div></div><div>Участник</div><div style="text-align:right">Очки</div>
+          <div style="text-align:center">🎯 Точных</div>
+          <div style="text-align:center">✅ Исходов</div>
+        </div>
+        ${rows.map((r,i)=>`
+          <div class="lb-row">
+            <div class="lb-rank ${i<3?'r'+(i+1):''}">${medals[i]||i+1}</div>
+            <div><strong>${r.name}</strong></div>
+            <div class="lb-pts">${r.total_points}</div>
+            <div class="lb-stat">${r.exact_hits}</div>
+            <div class="lb-stat">${r.outcome_hits}</div>
+          </div>`).join('')}
+      </div>`;
+  } catch(e) { toast(e.message,'error'); }
+}
+
+// ── ADMIN ──
+async function loadAdmin() {
+  await loadPlayersTable();
+  await loadAdminMatches();
+}
+
+async function loadPlayersTable() {
+  const players = await fetch('/api/admin/players', {headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
+  const origin = location.origin;
+  document.getElementById('players-table').innerHTML = players.map(p=>`
+    <tr>
+      <td>${p.name}</td>
+      <td><span class="token-cell" onclick="copyToken('${origin}?token=${p.token}')" title="Нажми чтобы скопировать ссылку">${p.token}</span></td>
+      <td style="color:var(--muted);font-size:12px">${p.telegram_chat_id ? '✅ Подключён' : '⏳ Не подключён'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="copyToken('${origin}?token=${p.token}')">📋 Ссылка</button></td>
+    </tr>`).join('');
+}
+
+function copyToken(text) {
+  navigator.clipboard.writeText(text);
+  toast('Ссылка скопирована!');
+}
+
+async function addPlayer() {
+  const name = document.getElementById('p-name').value.trim();
+  if (!name) return;
+  const res = await fetch('/api/admin/players', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body: JSON.stringify({name})
+  });
+  if (res.ok) {
+    const data = await res.json();
+    document.getElementById('p-name').value = '';
+    toast(`Участник ${name} добавлен`);
+    await loadPlayersTable();
+    // Show token link
+    const link = `${location.origin}?token=${data.token}`;
+    if (confirm(`Скопировать ссылку для ${name}?\n\n${link}`)) {
+      navigator.clipboard.writeText(link);
+      toast('Скопировано!');
+    }
+  } else {
+    const err = await res.json();
+    toast(err.detail || 'Ошибка', 'error');
+  }
+}
+
+async function addMatch() {
+  const home = document.getElementById('m-home').value.trim();
+  const away = document.getElementById('m-away').value.trim();
+  const time = document.getElementById('m-time').value;
+  if (!home||!away||!time) { toast('Заполни все поля','error'); return; }
+  const res = await fetch('/api/admin/matches', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body: JSON.stringify({home_team:home,away_team:away,match_time:time})
+  });
+  if (res.ok) {
+    document.getElementById('m-home').value='';
+    document.getElementById('m-away').value='';
+    document.getElementById('m-time').value='';
+    toast('Матч добавлен!');
+    loadAdminMatches();
+    loadMatches();
+  } else { toast('Ошибка','error'); }
+}
+
+async function loadAdminMatches() {
+  const matches = await fetch('/api/admin/matches', {headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
+  const el = document.getElementById('admin-matches-list');
+  el.innerHTML = matches.map(m=>{
+    const dt = new Date(m.match_time).toLocaleString('ru');
+    const predsInfo = m.predictions.length ? m.predictions.map(p=>`${p.name}: ${p.home_score}:${p.away_score}`).join(', ') : 'нет';
+    return `
+    <div class="match-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+        <div>
+          <div class="teams" style="font-size:18px">${m.home_team} vs ${m.away_team}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">${dt} · ${m.status}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Прогнозы: ${predsInfo}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${m.status==='upcoming'?`
+            <button class="btn btn-sm btn-ghost" onclick="setStatus(${m.id},'live')">▶ Старт</button>`:''}
+          ${m.status==='live'?`
+            <button class="btn btn-sm" onclick="promptResult(${m.id})">Ввести счёт</button>`:''}
+          ${m.status==='finished'?`<span style="color:var(--green);font-size:13px">✅ ${m.home_score}:${m.away_score}</span>`:''}
+          <button class="btn btn-sm btn-danger" onclick="deleteMatch(${m.id})">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty"><div class="big">📅</div>Матчей нет</div>';
+}
+
+async function setStatus(id, status) {
+  await fetch(`/api/admin/matches/${id}/status?status=${status}`, {
+    method:'PUT', headers:{'x-admin-token':state.adminToken}
+  });
+  loadAdminMatches(); loadMatches();
+}
+
+async function promptResult(id) {
+  const score = prompt('Введи счёт (например: 2:1)');
+  if (!score) return;
+  const [h,a] = score.split(':').map(Number);
+  if (isNaN(h)||isNaN(a)) { toast('Неверный формат','error'); return; }
+  await fetch(`/api/admin/matches/${id}/result`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body: JSON.stringify({home_score:h,away_score:a})
+  });
+  toast('Результат сохранён!');
+  loadAdminMatches(); loadMatches();
+}
+
+async function deleteMatch(id) {
+  if (!confirm('Удалить матч?')) return;
+  await fetch(`/api/admin/matches/${id}`, {
+    method:'DELETE', headers:{'x-admin-token':state.adminToken}
+  });
+  loadAdminMatches(); loadMatches();
+}
+
+// Auto-login from URL token
+const urlParams = new URLSearchParams(location.search);
+const urlToken = urlParams.get('token');
+if (urlToken) {
+  document.getElementById('token-input').value = urlToken;
+}
+
+// Try auto-login
+(async () => {
+  const saved = localStorage.getItem('player_token') || urlToken;
+  if (saved) {
+    state.token = saved;
+    try {
+      const me = await api('/api/me');
+      state.playerName = me.name;
+      if (urlToken) localStorage.setItem('player_token', urlToken);
+      enterApp();
+    } catch(e) {
+      localStorage.removeItem('player_token');
+    }
+  }
+})();
+</script>
+</body>
+</html>
