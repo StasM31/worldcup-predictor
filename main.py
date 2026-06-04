@@ -87,18 +87,21 @@ def init_db():
 init_db()
 
 # ── Авто-старт ──
+# ── Авто-старт ──
 async def auto_start_scheduler():
+    """Время матчей хранится как московское (UTC+3), сравниваем с текущим МСК."""
+    from datetime import timedelta
     await asyncio.sleep(5)
     while True:
         try:
-            now = datetime.now(timezone.utc)
+            now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).replace(tzinfo=None)
             with get_db() as db:
                 matches = db.execute("SELECT * FROM matches WHERE status='upcoming'").fetchall()
                 for m in matches:
                     mt = parse_dt(m["match_time"])
-                    if mt and now >= mt:
+                    if mt and now_msk >= mt.replace(tzinfo=None):
                         db.execute("UPDATE matches SET status='grace', started_at=? WHERE id=?",
-                                   (now.isoformat(), m["id"]))
+                                   (datetime.now(timezone.utc).isoformat(), m["id"]))
                         asyncio.create_task(grace_period_end(m["id"]))
                         print(f"Auto-started: {m['home_team']} vs {m['away_team']}")
         except Exception as e:
@@ -226,18 +229,31 @@ async def predict(match_id: int, body: PredictionIn):
             raise HTTPException(404, "Матч не найден")
         if match["status"] not in ("upcoming", "grace"):
             raise HTTPException(400, "Приём ставок закрыт")
-        if db.execute("SELECT id FROM predictions WHERE player_id=? AND match_id=?",
-                      (player["id"], match_id)).fetchone():
-            raise HTTPException(400, "Ты уже сделал прогноз")
+        existing = db.execute("SELECT id, is_vabank FROM predictions WHERE player_id=? AND match_id=?",
+                      (player["id"], match_id)).fetchone()
+        # В грейс-период менять нельзя — матч уже начался
+        if existing and match["status"] == "grace":
+            raise HTTPException(400, "Матч уже начался, прогноз менять нельзя")
         is_vabank = 0
         if body.is_vabank:
-            if db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone():
-                raise HTTPException(400, "Ва-банк уже использован в этом турнире")
-            db.execute("INSERT OR IGNORE INTO vabank_used (player_id) VALUES (?)", (player["id"],))
+            # Проверяем ва-банк только если это новая ставка
+            if not existing:
+                if db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone():
+                    raise HTTPException(400, "Ва-банк уже использован в этом турнире")
+                db.execute("INSERT OR IGNORE INTO vabank_used (player_id) VALUES (?)", (player["id"],))
             is_vabank = 1
-        db.execute(
-            "INSERT INTO predictions (player_id, match_id, home_score, away_score, is_vabank) VALUES (?,?,?,?,?)",
-            (player["id"], match_id, body.home_score, body.away_score, is_vabank))
+        if existing:
+            # Обновляем существующий прогноз (только если upcoming)
+            # Если был ва-банк и снимаем — возвращаем возможность использовать
+            if existing["is_vabank"] and not is_vabank:
+                db.execute("DELETE FROM vabank_used WHERE player_id=?", (player["id"],))
+            db.execute(
+                "UPDATE predictions SET home_score=?, away_score=?, is_vabank=? WHERE player_id=? AND match_id=?",
+                (body.home_score, body.away_score, is_vabank, player["id"], match_id))
+        else:
+            db.execute(
+                "INSERT INTO predictions (player_id, match_id, home_score, away_score, is_vabank) VALUES (?,?,?,?,?)",
+                (player["id"], match_id, body.home_score, body.away_score, is_vabank))
     check_and_broadcast(match_id)
     return {"ok": True}
 
@@ -248,11 +264,11 @@ def match_predictions(match_id: int, token: str):
         match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         if not match:
             raise HTTPException(404)
+        total = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+        done = db.execute("SELECT COUNT(*) FROM predictions WHERE match_id=?", (match_id,)).fetchone()[0]
+        # Скрываем прогнозы пока матч не начался (статус upcoming)
         if match["status"] == "upcoming":
-            total = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
-            done = db.execute("SELECT COUNT(*) FROM predictions WHERE match_id=?", (match_id,)).fetchone()[0]
-            if done < total:
-                return {"hidden": True, "reason": f"Ждём прогнозов: {done}/{total}"}
+            return {"hidden": True, "reason": f"Прогнозы скрыты до начала матча • {done}/{total} сделали ставку"}
         preds = db.execute("""
             SELECT pl.name, p.home_score, p.away_score, p.points, p.is_vabank
             FROM predictions p JOIN players pl ON p.player_id=pl.id
@@ -333,15 +349,39 @@ def get_tournament_prediction(token: str):
 
 @app.get("/api/tournament-predictions-all")
 def get_all_tournament_predictions(token: str):
-    get_player_by_token(token)
+    player = get_player_by_token(token)
     with get_db() as db:
+        # Турнир начался если есть хотя бы один матч не в статусе upcoming
+        tournament_started = db.execute(
+            "SELECT COUNT(*) FROM matches WHERE status != 'upcoming'"
+        ).fetchone()[0] > 0
+        total_players = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+        done_players = db.execute("SELECT COUNT(*) FROM tournament_predictions").fetchone()[0]
         rows = db.execute("""
             SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer,
-                   tp.champion_pts, tp.finalist_pts, tp.scorer_pts
+                   tp.champion_pts, tp.finalist_pts, tp.scorer_pts, pl.id as player_id
             FROM tournament_predictions tp JOIN players pl ON tp.player_id=pl.id
         """).fetchall()
         result = db.execute("SELECT * FROM tournament_result WHERE id=1").fetchone()
-    return {"predictions": [dict(r) for r in rows], "result": dict(result) if result else None}
+    if tournament_started:
+        # Турнир начался — показываем все прогнозы
+        return {
+            "predictions": [dict(r) for r in rows],
+            "result": dict(result) if result else None,
+            "tournament_started": True,
+            "done_count": done_players,
+            "total_count": total_players
+        }
+    else:
+        # Турнир не начался — показываем только свой прогноз, остальные скрыты
+        my_pred = next((dict(r) for r in rows if r["player_id"] == player["id"]), None)
+        return {
+            "predictions": [my_pred] if my_pred else [],
+            "result": None,
+            "tournament_started": False,
+            "done_count": done_players,
+            "total_count": total_players
+        }
 
 # ── Admin ──
 class PlayerIn(BaseModel):
