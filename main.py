@@ -108,9 +108,72 @@ async def auto_start_scheduler():
             print(f"Scheduler error: {e}")
         await asyncio.sleep(30)
 
+# ── Ежедневный дайджест в 18:00 МСК ──
+DAILY_DIGEST_HOUR_MSK = 18
+
+async def daily_digest_scheduler():
+    """Каждый день в 18:00 МСК отправляет таблицу лидеров всем участникам."""
+    from datetime import timedelta
+    await asyncio.sleep(10)
+    last_sent_date = None
+    while True:
+        try:
+            now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).replace(tzinfo=None)
+            today = now_msk.date()
+            if now_msk.hour == DAILY_DIGEST_HOUR_MSK and now_msk.minute < 1 and last_sent_date != today:
+                last_sent_date = today
+                await send_daily_digest()
+                print(f"Daily digest sent at {now_msk}")
+        except Exception as e:
+            print(f"Daily digest error: {e}")
+        await asyncio.sleep(30)
+
+async def send_daily_digest():
+    """Формирует и рассылает таблицу лидеров."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT pl.name,
+                   COALESCE(SUM(p.points),0) +
+                   COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as total_points,
+                   COUNT(p.id) as pred_count,
+                   SUM(CASE WHEN p.points>=3 THEN 1 ELSE 0 END) as exact_hits,
+                   SUM(CASE WHEN p.points=1 THEN 1 ELSE 0 END) as outcome_hits
+            FROM players pl
+            LEFT JOIN predictions p ON pl.id=p.player_id
+            GROUP BY pl.id ORDER BY total_points DESC
+        """).fetchall()
+        players = db.execute("SELECT telegram_chat_id FROM players WHERE telegram_chat_id IS NOT NULL").fetchall()
+
+    if not rows:
+        return
+
+    medals = ['🥇', '🥈', '🥉']
+    from datetime import timedelta, date
+    today_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).strftime('%d.%m.%Y')
+
+    lines = [f"📊 <b>Таблица лидеров на {today_msk}</b>\n"]
+    for i, r in enumerate(rows):
+        medal = medals[i] if i < 3 else f"{i+1}."
+        lines.append(
+            f"{medal} <b>{r['name']}</b> — <b>{r['total_points']} очк.</b>  "
+            f"🎯{r['exact_hits']} ✅{r['outcome_hits']}"
+        )
+
+    text = "\n".join(lines)
+    tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players]
+    if tasks:
+        await asyncio.gather(*tasks)
+
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(auto_start_scheduler())
+    asyncio.create_task(daily_digest_scheduler())
+
+# Ручная отправка дайджеста (для теста)
+@app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
+async def manual_digest():
+    await send_daily_digest()
+    return {"ok": True}
 
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
