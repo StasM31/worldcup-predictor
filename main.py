@@ -169,6 +169,10 @@ async def startup():
     asyncio.create_task(auto_start_scheduler())
     asyncio.create_task(daily_digest_scheduler())
 
+def require_admin(x_admin_token: str = Header(...)):
+    if x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(403, "Forbidden")
+
 # Ручная отправка дайджеста (для теста)
 @app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
 async def manual_digest():
@@ -183,9 +187,6 @@ def parse_dt(s):
             continue
     return None
 
-def require_admin(x_admin_token: str = Header(...)):
-    if x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(403, "Forbidden")
 
 def get_player_by_token(token: str):
     with get_db() as db:
