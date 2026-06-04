@@ -1,17 +1,16 @@
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import sqlite3, os, httpx, asyncio, secrets
 from contextlib import contextmanager
 from datetime import datetime, timezone
 
 app = FastAPI()
-
 DATABASE = "predictor.db"
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "changeme123")
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-GRACE_SECONDS = 60  # 1 минута грейс-период
+GRACE_SECONDS = 60
 
 @contextmanager
 def get_db():
@@ -49,18 +48,46 @@ def init_db():
             home_score INTEGER NOT NULL,
             away_score INTEGER NOT NULL,
             points INTEGER DEFAULT 0,
+            is_vabank INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now')),
             UNIQUE(player_id, match_id),
             FOREIGN KEY(player_id) REFERENCES players(id),
             FOREIGN KEY(match_id) REFERENCES matches(id)
         );
+        CREATE TABLE IF NOT EXISTS vabank_used (
+            player_id INTEGER PRIMARY KEY,
+            FOREIGN KEY(player_id) REFERENCES players(id)
+        );
+        CREATE TABLE IF NOT EXISTS tournament_predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            player_id INTEGER UNIQUE NOT NULL,
+            champion TEXT,
+            finalist1 TEXT,
+            finalist2 TEXT,
+            top_scorer TEXT,
+            champion_pts INTEGER DEFAULT 0,
+            finalist_pts INTEGER DEFAULT 0,
+            scorer_pts INTEGER DEFAULT 0,
+            FOREIGN KEY(player_id) REFERENCES players(id)
+        );
+        CREATE TABLE IF NOT EXISTS tournament_result (
+            id INTEGER PRIMARY KEY CHECK (id=1),
+            champion TEXT,
+            finalist1 TEXT,
+            finalist2 TEXT,
+            top_scorer TEXT
+        );
         """)
+        # Миграция — добавить is_vabank если не существует
+        try:
+            db.execute("ALTER TABLE predictions ADD COLUMN is_vabank INTEGER DEFAULT 0")
+        except:
+            pass
 
 init_db()
 
-# ── Авто-старт матчей ──
+# ── Авто-старт ──
 async def auto_start_scheduler():
-    """Каждые 30 секунд проверяет — не пора ли стартовать матч."""
     await asyncio.sleep(5)
     while True:
         try:
@@ -68,14 +95,7 @@ async def auto_start_scheduler():
             with get_db() as db:
                 matches = db.execute("SELECT * FROM matches WHERE status='upcoming'").fetchall()
                 for m in matches:
-                    mt_str = m["match_time"]
-                    mt = None
-                    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
-                        try:
-                            mt = datetime.strptime(mt_str, fmt).replace(tzinfo=timezone.utc)
-                            break
-                        except ValueError:
-                            continue
+                    mt = parse_dt(m["match_time"])
                     if mt and now >= mt:
                         db.execute("UPDATE matches SET status='grace', started_at=? WHERE id=?",
                                    (now.isoformat(), m["id"]))
@@ -89,25 +109,33 @@ async def auto_start_scheduler():
 async def startup():
     asyncio.create_task(auto_start_scheduler())
 
+def parse_dt(s):
+    for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(s, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
+
 def require_admin(x_admin_token: str = Header(...)):
     if x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(403, "Forbidden")
 
 def get_player_by_token(token: str):
     with get_db() as db:
         row = db.execute("SELECT * FROM players WHERE token=?", (token,)).fetchone()
     if not row:
-        raise HTTPException(status_code=401, detail="Неверный токен")
+        raise HTTPException(401, "Неверный токен")
     return row
 
 # ── Telegram ──
 async def send_telegram(chat_id: str, text: str):
     if not BOT_TOKEN or not chat_id:
         return
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     async with httpx.AsyncClient() as client:
         try:
-            await client.post(url, json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
+            await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                              json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"})
         except Exception as e:
             print(f"Telegram error: {e}")
 
@@ -115,28 +143,21 @@ async def broadcast_predictions(match_id: int):
     with get_db() as db:
         match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         preds = db.execute("""
-            SELECT pl.name, p.home_score, p.away_score
-            FROM predictions p JOIN players pl ON p.player_id = pl.id
-            WHERE p.match_id=?
+            SELECT pl.name, p.home_score, p.away_score, p.is_vabank
+            FROM predictions p JOIN players pl ON p.player_id=pl.id WHERE p.match_id=?
         """, (match_id,)).fetchall()
         all_players = db.execute("SELECT id, name, telegram_chat_id FROM players").fetchall()
-
     if not match:
         return
-
-    pred_player_ids = set()
-    with get_db() as db:
-        rows = db.execute("SELECT player_id FROM predictions WHERE match_id=?", (match_id,)).fetchall()
-        pred_player_ids = {r["player_id"] for r in rows}
-
-    lines = [f"⚽ <b>{match['home_team']} vs {match['away_team']}</b>\n🔮 Прогнозы на матч:\n"]
+    pred_map = {p["name"]: p for p in preds}
+    lines = [f"⚽ <b>{match['home_team']} vs {match['away_team']}</b>\n🔮 Прогнозы:\n"]
     for pl in all_players:
-        if pl["id"] in pred_player_ids:
-            p = next(x for x in preds if x["name"] == pl["name"])
-            lines.append(f"• {pl['name']}: <b>{p['home_score']}:{p['away_score']}</b>")
+        p = pred_map.get(pl["name"])
+        if p:
+            vb = " 🔥<b>ВА-БАНК</b>" if p["is_vabank"] else ""
+            lines.append(f"• {pl['name']}: <b>{p['home_score']}:{p['away_score']}</b>{vb}")
         else:
             lines.append(f"• {pl['name']}: 😴 нет прогноза")
-
     text = "\n".join(lines)
     tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in all_players if pl["telegram_chat_id"]]
     if tasks:
@@ -150,31 +171,35 @@ def check_and_broadcast(match_id: int):
         asyncio.create_task(broadcast_predictions(match_id))
 
 async def grace_period_end(match_id: int):
-    """Called after grace period — close betting and broadcast."""
     await asyncio.sleep(GRACE_SECONDS)
     with get_db() as db:
-        match = db.execute("SELECT status FROM matches WHERE id=?", (match_id,)).fetchone()
-        if match and match["status"] == "grace":
+        m = db.execute("SELECT status FROM matches WHERE id=?", (match_id,)).fetchone()
+        if m and m["status"] == "grace":
             db.execute("UPDATE matches SET status='live' WHERE id=?", (match_id,))
     await broadcast_predictions(match_id)
 
-def calc_points(ph, pa, rh, ra):
+def calc_points(ph, pa, rh, ra, is_vabank=False):
     if ph == rh and pa == ra:
-        return 3
+        return 9 if is_vabank else 3
     po = "H" if ph > pa else ("A" if ph < pa else "D")
     ro = "H" if rh > ra else ("A" if rh < ra else "D")
-    return 1 if po == ro else 0
+    if po == ro:
+        return 3 if is_vabank else 1
+    return 0
 
 # ── Player endpoints ──
 class PredictionIn(BaseModel):
     token: str
     home_score: int
     away_score: int
+    is_vabank: bool = False
 
 @app.get("/api/me")
 def get_me(token: str):
     player = get_player_by_token(token)
-    return {"id": player["id"], "name": player["name"]}
+    with get_db() as db:
+        vb = db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone()
+    return {"id": player["id"], "name": player["name"], "vabank_used": bool(vb)}
 
 @app.get("/api/matches")
 def list_matches(token: str):
@@ -182,14 +207,13 @@ def list_matches(token: str):
     with get_db() as db:
         matches = db.execute("SELECT * FROM matches ORDER BY match_time ASC").fetchall()
         my_preds = db.execute(
-            "SELECT match_id, home_score, away_score FROM predictions WHERE player_id=?",
-            (player["id"],)
-        ).fetchall()
+            "SELECT match_id, home_score, away_score, is_vabank FROM predictions WHERE player_id=?",
+            (player["id"],)).fetchall()
     pred_map = {p["match_id"]: p for p in my_preds}
     result = []
     for m in matches:
         d = dict(m)
-        d["my_prediction"] = {"home": pred_map[m["id"]]["home_score"], "away": pred_map[m["id"]]["away_score"]} if m["id"] in pred_map else None
+        d["my_prediction"] = dict(pred_map[m["id"]]) if m["id"] in pred_map else None
         result.append(d)
     return result
 
@@ -202,12 +226,18 @@ async def predict(match_id: int, body: PredictionIn):
             raise HTTPException(404, "Матч не найден")
         if match["status"] not in ("upcoming", "grace"):
             raise HTTPException(400, "Приём ставок закрыт")
-        if db.execute("SELECT id FROM predictions WHERE player_id=? AND match_id=?", (player["id"], match_id)).fetchone():
+        if db.execute("SELECT id FROM predictions WHERE player_id=? AND match_id=?",
+                      (player["id"], match_id)).fetchone():
             raise HTTPException(400, "Ты уже сделал прогноз")
+        is_vabank = 0
+        if body.is_vabank:
+            if db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone():
+                raise HTTPException(400, "Ва-банк уже использован в этом турнире")
+            db.execute("INSERT OR IGNORE INTO vabank_used (player_id) VALUES (?)", (player["id"],))
+            is_vabank = 1
         db.execute(
-            "INSERT INTO predictions (player_id, match_id, home_score, away_score) VALUES (?,?,?,?)",
-            (player["id"], match_id, body.home_score, body.away_score)
-        )
+            "INSERT INTO predictions (player_id, match_id, home_score, away_score, is_vabank) VALUES (?,?,?,?,?)",
+            (player["id"], match_id, body.home_score, body.away_score, is_vabank))
     check_and_broadcast(match_id)
     return {"ok": True}
 
@@ -224,7 +254,7 @@ def match_predictions(match_id: int, token: str):
             if done < total:
                 return {"hidden": True, "reason": f"Ждём прогнозов: {done}/{total}"}
         preds = db.execute("""
-            SELECT pl.name, p.home_score, p.away_score, p.points
+            SELECT pl.name, p.home_score, p.away_score, p.points, p.is_vabank
             FROM predictions p JOIN players pl ON p.player_id=pl.id
             WHERE p.match_id=? ORDER BY pl.name
         """, (match_id,)).fetchall()
@@ -236,17 +266,84 @@ def leaderboard(token: str):
     with get_db() as db:
         rows = db.execute("""
             SELECT pl.name,
-                   COALESCE(SUM(p.points),0) as total_points,
+                   COALESCE(SUM(p.points),0) +
+                   COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as total_points,
+                   COALESCE(SUM(p.points),0) as match_points,
                    COUNT(p.id) as predictions_count,
-                   SUM(CASE WHEN p.points=3 THEN 1 ELSE 0 END) as exact_hits,
-                   SUM(CASE WHEN p.points=1 THEN 1 ELSE 0 END) as outcome_hits
+                   SUM(CASE WHEN p.points>=3 AND p.is_vabank=0 THEN 1 WHEN p.points>=9 THEN 1 ELSE 0 END) as exact_hits,
+                   SUM(CASE WHEN p.points=1 OR p.points=3 AND p.is_vabank=1 THEN 1 ELSE 0 END) as outcome_hits,
+                   CASE WHEN COUNT(p.id)>0 THEN ROUND(100.0*(SUM(CASE WHEN p.points>0 THEN 1 ELSE 0 END))/COUNT(p.id),1) ELSE 0 END as hit_pct,
+                   COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as tournament_bonus
             FROM players pl
             LEFT JOIN predictions p ON pl.id=p.player_id
             GROUP BY pl.id ORDER BY total_points DESC
         """).fetchall()
     return [dict(r) for r in rows]
 
-# ── Admin endpoints ──
+@app.get("/api/archive")
+def archive(token: str):
+    get_player_by_token(token)
+    with get_db() as db:
+        matches = db.execute(
+            "SELECT * FROM matches WHERE status='finished' ORDER BY match_time DESC").fetchall()
+        result = []
+        for m in matches:
+            preds = db.execute("""
+                SELECT pl.name, p.home_score, p.away_score, p.points, p.is_vabank
+                FROM predictions p JOIN players pl ON p.player_id=pl.id
+                WHERE p.match_id=? ORDER BY p.points DESC, pl.name
+            """, (m["id"],)).fetchall()
+            d = dict(m)
+            d["predictions"] = [dict(p) for p in preds]
+            result.append(d)
+    return result
+
+# ── Tournament predictions ──
+class TournamentPredIn(BaseModel):
+    token: str
+    champion: str
+    finalist1: str
+    finalist2: str
+    top_scorer: str
+
+@app.post("/api/tournament-prediction")
+def set_tournament_prediction(body: TournamentPredIn):
+    player = get_player_by_token(body.token)
+    with get_db() as db:
+        db.execute("""
+            INSERT INTO tournament_predictions (player_id, champion, finalist1, finalist2, top_scorer)
+            VALUES (?,?,?,?,?)
+            ON CONFLICT(player_id) DO UPDATE SET
+              champion=excluded.champion, finalist1=excluded.finalist1,
+              finalist2=excluded.finalist2, top_scorer=excluded.top_scorer
+        """, (player["id"], body.champion, body.finalist1, body.finalist2, body.top_scorer))
+    return {"ok": True}
+
+@app.get("/api/tournament-prediction")
+def get_tournament_prediction(token: str):
+    player = get_player_by_token(token)
+    with get_db() as db:
+        row = db.execute("SELECT * FROM tournament_predictions WHERE player_id=?",
+                         (player["id"],)).fetchone()
+        result = db.execute("SELECT * FROM tournament_result WHERE id=1").fetchone()
+    return {
+        "my_prediction": dict(row) if row else None,
+        "result": dict(result) if result else None
+    }
+
+@app.get("/api/tournament-predictions-all")
+def get_all_tournament_predictions(token: str):
+    get_player_by_token(token)
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer,
+                   tp.champion_pts, tp.finalist_pts, tp.scorer_pts
+            FROM tournament_predictions tp JOIN players pl ON tp.player_id=pl.id
+        """).fetchall()
+        result = db.execute("SELECT * FROM tournament_result WHERE id=1").fetchone()
+    return {"predictions": [dict(r) for r in rows], "result": dict(result) if result else None}
+
+# ── Admin ──
 class PlayerIn(BaseModel):
     name: str
     telegram_chat_id: Optional[str] = None
@@ -256,9 +353,18 @@ class MatchIn(BaseModel):
     away_team: str
     match_time: str
 
+class MatchBatchIn(BaseModel):
+    matches: List[MatchIn]
+
 class ResultIn(BaseModel):
     home_score: int
     away_score: int
+
+class TournamentResultIn(BaseModel):
+    champion: str
+    finalist1: str
+    finalist2: str
+    top_scorer: str
 
 @app.post("/api/admin/players", dependencies=[Depends(require_admin)])
 def add_player(body: PlayerIn):
@@ -277,19 +383,25 @@ def get_players():
         rows = db.execute("SELECT id, name, telegram_chat_id, token FROM players").fetchall()
     return [dict(r) for r in rows]
 
-@app.put("/api/admin/players/{player_id}", dependencies=[Depends(require_admin)])
-def update_player(player_id: int, body: PlayerIn):
-    with get_db() as db:
-        db.execute("UPDATE players SET name=?, telegram_chat_id=? WHERE id=?",
-                   (body.name, body.telegram_chat_id, player_id))
-    return {"ok": True}
-
 @app.post("/api/admin/matches", dependencies=[Depends(require_admin)])
 def add_match(body: MatchIn):
     with get_db() as db:
         cur = db.execute("INSERT INTO matches (home_team, away_team, match_time) VALUES (?,?,?)",
                          (body.home_team, body.away_team, body.match_time))
     return {"id": cur.lastrowid}
+
+@app.post("/api/admin/matches/batch", dependencies=[Depends(require_admin)])
+def add_matches_batch(body: MatchBatchIn):
+    added = 0
+    with get_db() as db:
+        for m in body.matches:
+            try:
+                db.execute("INSERT INTO matches (home_team, away_team, match_time) VALUES (?,?,?)",
+                           (m.home_team, m.away_team, m.match_time))
+                added += 1
+            except Exception as e:
+                print(f"Batch error: {e}")
+    return {"added": added}
 
 @app.delete("/api/admin/matches/{match_id}", dependencies=[Depends(require_admin)])
 def delete_match(match_id: int):
@@ -298,36 +410,15 @@ def delete_match(match_id: int):
         db.execute("DELETE FROM matches WHERE id=?", (match_id,))
     return {"ok": True}
 
-@app.post("/api/admin/matches/{match_id}/start", dependencies=[Depends(require_admin)])
-async def start_match(match_id: int):
-    """Start grace period — 1 minute window to still place bets."""
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc).isoformat()
-    with get_db() as db:
-        match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
-        if not match:
-            raise HTTPException(404)
-        db.execute("UPDATE matches SET status='grace', started_at=? WHERE id=?", (now, match_id))
-    asyncio.create_task(grace_period_end(match_id))
-    return {"ok": True}
-
-@app.put("/api/admin/matches/{match_id}/status", dependencies=[Depends(require_admin)])
-def update_match_status(match_id: int, status: str):
-    if status not in ("upcoming", "live", "grace", "finished"):
-        raise HTTPException(400, "Invalid status")
-    with get_db() as db:
-        db.execute("UPDATE matches SET status=? WHERE id=?", (status, match_id))
-    return {"ok": True}
-
 @app.post("/api/admin/matches/{match_id}/result", dependencies=[Depends(require_admin)])
 def set_result(match_id: int, body: ResultIn):
     with get_db() as db:
         db.execute("UPDATE matches SET home_score=?, away_score=?, status='finished' WHERE id=?",
                    (body.home_score, body.away_score, match_id))
-        preds = db.execute("SELECT id, home_score, away_score FROM predictions WHERE match_id=?",
+        preds = db.execute("SELECT id, home_score, away_score, is_vabank FROM predictions WHERE match_id=?",
                            (match_id,)).fetchall()
         for p in preds:
-            pts = calc_points(p["home_score"], p["away_score"], body.home_score, body.away_score)
+            pts = calc_points(p["home_score"], p["away_score"], body.home_score, body.away_score, bool(p["is_vabank"]))
             db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
     return {"ok": True}
 
@@ -336,18 +427,40 @@ def admin_matches():
     with get_db() as db:
         rows = db.execute("SELECT * FROM matches ORDER BY match_time ASC").fetchall()
         preds = db.execute("""
-            SELECT p.match_id, pl.name, p.home_score, p.away_score, p.points
+            SELECT p.match_id, pl.name, p.home_score, p.away_score, p.points, p.is_vabank
             FROM predictions p JOIN players pl ON p.player_id=pl.id
         """).fetchall()
     pred_map = {}
     for p in preds:
         pred_map.setdefault(p["match_id"], []).append(dict(p))
-    result = []
-    for m in rows:
-        d = dict(m)
-        d["predictions"] = pred_map.get(m["id"], [])
-        result.append(d)
-    return result
+    return [dict(m) | {"predictions": pred_map.get(m["id"], [])} for m in rows]
+
+@app.post("/api/admin/tournament-result", dependencies=[Depends(require_admin)])
+def set_tournament_result(body: TournamentResultIn):
+    with get_db() as db:
+        db.execute("""
+            INSERT INTO tournament_result (id, champion, finalist1, finalist2, top_scorer)
+            VALUES (1,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET
+              champion=excluded.champion, finalist1=excluded.finalist1,
+              finalist2=excluded.finalist2, top_scorer=excluded.top_scorer
+        """, (body.champion, body.finalist1, body.finalist2, body.top_scorer))
+        # Пересчитать бонусы
+        preds = db.execute("SELECT * FROM tournament_predictions").fetchall()
+        for tp in preds:
+            champ_pts = 10 if tp["champion"] and tp["champion"].lower().strip() == body.champion.lower().strip() else 0
+            fin_pts = 0
+            finalists = {body.finalist1.lower().strip(), body.finalist2.lower().strip()}
+            if tp["finalist1"] and tp["finalist1"].lower().strip() in finalists:
+                fin_pts += 5
+            if tp["finalist2"] and tp["finalist2"].lower().strip() in finalists:
+                fin_pts += 5
+            scorer_pts = 10 if tp["top_scorer"] and tp["top_scorer"].lower().strip() == body.top_scorer.lower().strip() else 0
+            db.execute("""
+                UPDATE tournament_predictions SET champion_pts=?, finalist_pts=?, scorer_pts=?
+                WHERE player_id=?
+            """, (champ_pts, fin_pts, scorer_pts, tp["player_id"]))
+    return {"ok": True}
 
 # ── Telegram webhook ──
 @app.post("/api/telegram/webhook")
@@ -361,9 +474,10 @@ async def telegram_webhook(update: dict):
             player = db.execute("SELECT * FROM players WHERE token=?", (token,)).fetchone()
             if player:
                 db.execute("UPDATE players SET telegram_chat_id=? WHERE token=?", (chat_id, token))
-                await send_telegram(chat_id, f"✅ Привет, <b>{player['name']}</b>! Ты подключён к турниру прогнозов ⚽\n\nТеперь ты будешь получать уведомления с прогнозами перед каждым матчем. Удачи! 🏆")
+                await send_telegram(chat_id,
+                    f"✅ Привет, <b>{player['name']}</b>! Ты подключён к турниру прогнозов ⚽\nТеперь будешь получать уведомления перед матчами. Удачи! 🏆")
             else:
-                await send_telegram(chat_id, "❌ Неверный токен. Проверь ссылку.")
+                await send_telegram(chat_id, "❌ Неверный токен.")
     return {"ok": True}
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
