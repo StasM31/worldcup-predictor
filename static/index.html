@@ -922,12 +922,13 @@ async function addPlayer(){
   else{const e=await res.json();toast(e.detail||'Ошибка','err');}
 }
 async function addMatch(){
-  const home=document.getElementById('m-home').value.trim(),away=document.getElementById('m-away').value.trim(),time=document.getElementById('m-time').value;
-  if(!home||!away||!time){toast('Заполни все поля','err');return;}
-  const utcTime=new Date(new Date(time).getTime()-3*60*60*1000).toISOString().slice(0,16);
-  const res=await fetch('/api/admin/matches',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:utcTime})});
-  if(res.ok){document.getElementById('m-home').value=document.getElementById('m-away').value=document.getElementById('m-time').value='';toast('Матч добавлен!');loadAdminMatches();loadMatches();}
-  else toast('Ошибка','err');
+  const home=document.getElementById("m-home").value.trim(),away=document.getElementById("m-away").value.trim(),time=document.getElementById("m-time").value;
+  if(!home||!away||!time){toast("Заполни все поля","err");return;}
+  const [dp,tp]=time.split("T");const [y,mo,d]=dp.split("-").map(Number);const [h,mi]=(tp||"00:00").split(":").map(Number);
+  const utcTime=new Date(Date.UTC(y,mo-1,d,h,mi)-3*60*60*1000).toISOString().slice(0,16);
+  const res=await fetch("/api/admin/matches",{method:"POST",headers:{"Content-Type":"application/json","x-admin-token":state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:utcTime})});
+  if(res.ok){document.getElementById("m-home").value=document.getElementById("m-away").value=document.getElementById("m-time").value="";toast("Матч добавлен!");loadAdminMatches();loadMatches();}
+  else toast("Ошибка","err");
 }
 async function addBatch(){
   const raw=document.getElementById('batch-input').value.trim();if(!raw){toast('Вставь матчи','err');return;}
@@ -937,7 +938,7 @@ async function addBatch(){
     const parts=line.split(/\s*[—\-–]\s*/);
     if(parts.length<3){toast(`Ошибка: ${line}`,'err');return;}
     const home=parts[0].trim(),away=parts[1].trim(),time=parts[2].trim();
-    const utcTime=new Date(new Date(time).getTime()-3*60*60*1000).toISOString().slice(0,16);
+    const [dp2,tp2]=time.split("T");const [y2,mo2,d2]=dp2.split("-").map(Number);const [h2,mi2]=(tp2||"00:00").split(":").map(Number);const utcTime=new Date(Date.UTC(y2,mo2-1,d2,h2,mi2)-3*60*60*1000).toISOString().slice(0,16);
     matches.push({home_team:home,away_team:away,match_time:utcTime});
   }
   const res=await fetch('/api/admin/matches/batch',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({matches})});
