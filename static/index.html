@@ -434,7 +434,7 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
       </div>
       <div class="rules-card">
         <h3>🏆 О турнире</h3>
-        <p>Каждый участник делает прогноз на точный счёт матча до его начала. После начала матча ставки принимаются ещё 1 минуту. Побеждает тот, кто наберёт больше всего очков по окончании ЧМ.</p>
+        <p>Каждый участник делает прогноз на точный счёт матча до его начала. После старта — 1 минута грейс-периода. Побеждает тот, кто наберёт больше всего очков.</p>
       </div>
       <div class="rules-card">
         <h3>⚡ Очки за матчи</h3>
@@ -506,6 +506,11 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
           <input id="tr-scorer" placeholder="Лучший бомбардир">
           <button class="btn btn-primary" onclick="setTournamentResult()">Сохранить</button>
         </div>
+      </div>
+      <div class="admin-block">
+        <h3>📬 Ежедневная рассылка</h3>
+        <p class="hint">Таблица лидеров автоматически отправляется всем участникам в Telegram каждый день в <strong>18:00 МСК</strong>. Можно отправить вручную прямо сейчас для проверки.</p>
+        <button class="btn btn-primary" onclick="sendDigest()">📊 Отправить таблицу сейчас</button>
       </div>
       <div class="admin-block">
         <h3>📋 Управление матчами</h3>
@@ -1027,6 +1032,12 @@ async function addBatch(){
   const res=await fetch('/api/admin/matches/batch',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({matches})});
   if(res.ok){const d=await res.json();document.getElementById('batch-input').value='';toast(`Добавлено: ${d.added} матчей ✅`);loadAdminMatches();loadMatches();}
   else toast('Ошибка','err');
+}
+async function sendDigest(){
+  if(!confirm('Отправить таблицу лидеров всем участникам в Telegram прямо сейчас?'))return;
+  const res=await fetch('/api/admin/send-digest',{method:'POST',headers:{'x-admin-token':state.adminToken}});
+  if(res.ok)toast('📊 Таблица отправлена в Telegram!','ok');
+  else toast('Ошибка отправки','err');
 }
 async function setTournamentResult(){
   const body={champion:document.getElementById('tr-champion').value.trim(),finalist1:document.getElementById('tr-fin1').value.trim(),finalist2:document.getElementById('tr-fin2').value.trim(),top_scorer:document.getElementById('tr-scorer').value.trim()};
