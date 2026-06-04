@@ -669,7 +669,7 @@ function enterApp(){
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
   loadMatches();
 }
-function logout(){localStorage.removeItem('player_token');location.reload();}
+function logout(){localStorage.removeItem('player_token');location.href=location.origin+location.pathname;}
 function showTab(name){
   const tabs=['matches','tournament','leaderboard','archive','rules','admin'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===name));
