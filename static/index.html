@@ -695,7 +695,7 @@ function renderMatch(m){
   const isVb=m.my_prediction?.is_vabank;
   let pred='';
   if(m.my_prediction){
-    pred=`<div class="my-pred">${isVb?'<span class="vb-label">🔥 ВА-БАНК</span>':''} Мой прогноз: <strong>${m.my_prediction.home}:${m.my_prediction.away}</strong></div>`;
+    pred=`<div class="my-pred">${isVb?'<span class="vb-label">🔥 ВА-БАНК</span>':''} Мой прогноз: <strong>${m.my_prediction.home_score}:${m.my_prediction.away_score}</strong></div>`;
   } else if(m.status==='upcoming'||m.status==='grace'){
     const vbDis=state.vabankUsed?'used':'';
     pred=`<div class="predict-area" style="margin-top:4px">
