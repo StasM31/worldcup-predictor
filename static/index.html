@@ -189,6 +189,7 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .b-live{background:#fee2e2;color:var(--red);border:1px solid rgba(220,38,38,0.25);}
 .b-grace{background:#dcfce7;color:var(--green);border:1px solid rgba(22,163,74,0.25);}
 .b-finished{background:var(--bg);color:var(--muted);border:1px solid var(--border);}
+.b-ended{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;font-weight:700;}
 .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
 .b-live .dot,.b-grace .dot{animation:blink 1s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -698,10 +699,15 @@ function renderMatch(m){
   const timeStr=`${d} ${months[mo]}., ${h}:${mi} МСК`;
   let badge='';
   if(m.status==='upcoming')badge=`<span class="badge b-upcoming"><span class="dot"></span>Скоро</span>`;
-  else if(m.status==='live')badge=`<span class="badge b-live"><span class="dot"></span>Идёт</span>`;
-  else if(m.status==='grace')badge=`<span class="badge b-grace"><span class="dot"></span>Ещё 1 мин!</span>`;
-  else badge=`<span class="badge b-finished">Завершён</span>`;
-  const result=m.status==='finished'?`<div class="result-display">${m.home_score} : ${m.away_score}</div>`:'';
+  else if(m.status==='live')badge=`<span class="badge b-live"><span class="dot"></span>Live</span>`;
+  else if(m.status==='grace')badge=`<span class="badge b-live"><span class="dot"></span>Live · ещё 1 мин!</span>`;
+  else if(m.status==='ended')badge=`<span class="badge b-ended">⏹ FIN</span>`;
+  else badge=`<span class="badge b-finished">✓ FIN</span>`;
+  const result=m.status==='finished'
+    ?`<div class="result-display">${m.home_score} : ${m.away_score}</div>`
+    :m.status==='ended'
+    ?`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600">⏳ Ожидаем результат матча...</div>`
+    :'';
   const isVb=m.my_prediction?.is_vabank;
   let pred='';
   if(m.my_prediction && m.status!=='upcoming'){
@@ -738,7 +744,7 @@ function renderMatch(m){
           <button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${state.vabankUsed?'disabled':''}>🔥 Ва-банк</button>
         </div></div>`;
     }
-  } else if(m.status==='live'){
+  } else if(m.status==='live'||m.status==='ended'){
     pred=`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:1px">🔒 СТАВКИ ЗАКРЫТЫ</div>`;
   }
   let predsSection='';
@@ -1033,7 +1039,7 @@ async function loadAdminMatches(){
   const matches=await fetch('/api/admin/matches',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
   const el=document.getElementById('admin-matches-list');
   if(!matches.length){el.innerHTML='<div class="empty" style="padding:24px"><div class="ico">📅</div>Матчей нет</div>';return;}
-  const stL={upcoming:'⏳ Скоро',live:'🔴 Идёт',grace:'⚡ Грейс',finished:'✅ Завершён'};
+  const stL={upcoming:'⏳ Скоро',live:'🔴 Live',grace:'🔴 Live · 1 мин',ended:'⏹ FIN',finished:'✅ FIN'};
   el.innerHTML=matches.map(m=>{
     const mtp=m.match_time.split(/[T:\-]/);
     const months2=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
