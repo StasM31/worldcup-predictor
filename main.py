@@ -132,6 +132,60 @@ def get_player_by_token(token: str):
     return row
 
 # ── Telegram ──
+# Флаги стран для Telegram (эмодзи региональных индикаторов)
+TEAM_FLAGS = {
+    'россия':'🇷🇺','германия':'🇩🇪','франция':'🇫🇷','испания':'🇪🇸','италия':'🇮🇹',
+    'бразилия':'🇧🇷','аргентина':'🇦🇷','португалия':'🇵🇹','нидерланды':'🇳🇱','голландия':'🇳🇱',
+    'англия':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','великобритания':'🇬🇧','бельгия':'🇧🇪','хорватия':'🇭🇷','дания':'🇩🇰',
+    'швейцария':'🇨🇭','польша':'🇵🇱','швеция':'🇸🇪','норвегия':'🇳🇴','австрия':'🇦🇹',
+    'чехия':'🇨🇿','венгрия':'🇭🇺','румыния':'🇷🇴','сербия':'🇷🇸','греция':'🇬🇷',
+    'турция':'🇹🇷','украина':'🇺🇦','сша':'🇺🇸','мексика':'🇲🇽','канада':'🇨🇦',
+    'япония':'🇯🇵','южная корея':'🇰🇷','корея':'🇰🇷','австралия':'🇦🇺','иран':'🇮🇷',
+    'саудовская аравия':'🇸🇦','марокко':'🇲🇦','сенегал':'🇸🇳','гана':'🇬🇭','камерун':'🇨🇲',
+    'нигерия':'🇳🇬','египет':'🇪🇬','тунис':'🇹🇳','эквадор':'🇪🇨','уругвай':'🇺🇾',
+    'колумбия':'🇨🇴','чили':'🇨🇱','перу':'🇵🇪','катар':'🇶🇦','ирак':'🇮🇶',
+    'израиль':'🇮🇱','словакия':'🇸🇰','словения':'🇸🇮','болгария':'🇧🇬','финляндия':'🇫🇮',
+    'шотландия':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','уэльс':'🏴󠁧󠁢󠁷󠁬󠁳󠁿','ирландия':'🇮🇪','алжир':'🇩🇿',
+    'иордания':'🇯🇴','узбекистан':'🇺🇿','новая зеландия':'🇳🇿','гаити':'🇭🇹',
+    'кюрасао':'🇨🇼',"кот-д'ивуар":'🇨🇮','кабо-верде':'🇨🇻','юар':'🇿🇦',
+    'южная африка':'🇿🇦','босния и герцеговина':'🇧🇦','босния':'🇧🇦',
+    'др конго':'🇨🇩','конго':'🇨🇬','парагвай':'🇵🇾','армения':'🇦🇲',
+    'азербайджан':'🇦🇿','грузия':'🇬🇪','панама':'🇵🇦','гондурас':'🇭🇳',
+    'коста-рика':'🇨🇷','венесуэла':'🇻🇪','боливия':'🇧🇴',
+    # EN
+    'russia':'🇷🇺','germany':'🇩🇪','france':'🇫🇷','spain':'🇪🇸','italy':'🇮🇹',
+    'brazil':'🇧🇷','argentina':'🇦🇷','portugal':'🇵🇹','netherlands':'🇳🇱',
+    'england':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','belgium':'🇧🇪','croatia':'🇭🇷','denmark':'🇩🇰',
+    'switzerland':'🇨🇭','poland':'🇵🇱','sweden':'🇸🇪','norway':'🇳🇴','austria':'🇦🇹',
+    'czech republic':'🇨🇿','czechia':'🇨🇿','hungary':'🇭🇺','romania':'🇷🇴',
+    'serbia':'🇷🇸','greece':'🇬🇷','turkey':'🇹🇷','ukraine':'🇺🇦',
+    'usa':'🇺🇸','united states':'🇺🇸','mexico':'🇲🇽','canada':'🇨🇦',
+    'japan':'🇯🇵','south korea':'🇰🇷','australia':'🇦🇺','iran':'🇮🇷',
+    'saudi arabia':'🇸🇦','morocco':'🇲🇦','senegal':'🇸🇳','ghana':'🇬🇭',
+    'cameroon':'🇨🇲','nigeria':'🇳🇬','egypt':'🇪🇬','tunisia':'🇹🇳',
+    'ecuador':'🇪🇨','uruguay':'🇺🇾','colombia':'🇨🇴','chile':'🇨🇱',
+    'peru':'🇵🇪','qatar':'🇶🇦','algeria':'🇩🇿','jordan':'🇯🇴',
+    'uzbekistan':'🇺🇿','new zealand':'🇳🇿','haiti':'🇭🇹','curacao':'🇨🇼',
+    'south africa':'🇿🇦','bosnia':'🇧🇦','drc':'🇨🇩','panama':'🇵🇦',
+    'paraguay':'🇵🇾','armenia':'🇦🇲','georgia':'🇬🇪','scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+}
+
+def get_flag(name: str) -> str:
+    if not name:
+        return ''
+    key = name.strip().lower()
+    flag = TEAM_FLAGS.get(key, '')
+    if not flag:
+        for k, v in TEAM_FLAGS.items():
+            if key in k or k in key:
+                flag = v
+                break
+    return flag
+
+def team_with_flag(name: str) -> str:
+    flag = get_flag(name)
+    return f"{name} {flag}" if flag else name
+
 async def send_telegram(chat_id: str, text: str):
     if not BOT_TOKEN or not chat_id:
         return
@@ -152,8 +206,10 @@ async def broadcast_predictions(match_id: int):
         all_players = db.execute("SELECT id, name, telegram_chat_id FROM players").fetchall()
     if not match:
         return
+    home = team_with_flag(match['home_team'])
+    away = team_with_flag(match['away_team'])
     pred_map = {p["name"]: p for p in preds}
-    lines = [f"⚽ <b>{match['home_team']} vs {match['away_team']}</b>\n🔮 Прогнозы:\n"]
+    lines = [f"⚽ <b>{home} vs {away}</b>\n🔮 Прогнозы:\n"]
     for pl in all_players:
         p = pred_map.get(pl["name"])
         if p:
