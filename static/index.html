@@ -476,9 +476,17 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
       <div class="admin-block">
         <h3>➕ Добавить один матч</h3>
         <div class="form-row">
-          <input id="m-home" placeholder="Команда 1">
-          <input id="m-away" placeholder="Команда 2">
-          <input id="m-time" type="datetime-local">
+          <input id="m-home" placeholder="Команда 1" style="min-width:130px">
+          <input id="m-away" placeholder="Команда 2" style="min-width:130px">
+        </div>
+        <div class="form-row" style="align-items:center;flex-wrap:wrap;gap:8px">
+          <input id="m-day" type="number" min="1" max="31" placeholder="День" style="width:68px;text-align:center">
+          <input id="m-month" type="number" min="1" max="12" placeholder="Мес" style="width:68px;text-align:center">
+          <input id="m-year" type="number" min="2026" max="2030" placeholder="Год" value="2026" style="width:78px;text-align:center">
+          <input id="m-hour" type="number" min="0" max="23" placeholder="Час" style="width:65px;text-align:center">
+          <span style="color:var(--muted);font-weight:700;font-size:18px;padding:0 2px">:</span>
+          <input id="m-min" type="number" min="0" max="59" placeholder="Мин" value="0" style="width:65px;text-align:center">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;font-weight:600">МСК 24ч</span>
           <button class="btn btn-primary" onclick="addMatch()">Добавить</button>
         </div>
       </div>
@@ -978,12 +986,26 @@ async function addPlayer(){
   else{const e=await res.json();toast(e.detail||'Ошибка','err');}
 }
 async function addMatch(){
-  const home=document.getElementById("m-home").value.trim(),away=document.getElementById("m-away").value.trim(),time=document.getElementById("m-time").value;
-  if(!home||!away||!time){toast("Заполни все поля","err");return;}
-  // Передаём время как есть (МСК), без конвертации
-  const res=await fetch("/api/admin/matches",{method:"POST",headers:{"Content-Type":"application/json","x-admin-token":state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:time})});
-  if(res.ok){document.getElementById("m-home").value=document.getElementById("m-away").value=document.getElementById("m-time").value="";toast("Матч добавлен!");loadAdminMatches();loadMatches();}
-  else toast("Ошибка","err");
+  const home=document.getElementById("m-home").value.trim();
+  const away=document.getElementById("m-away").value.trim();
+  const day=parseInt(document.getElementById("m-day").value);
+  const month=parseInt(document.getElementById("m-month").value);
+  const year=parseInt(document.getElementById("m-year").value);
+  const hour=parseInt(document.getElementById("m-hour").value);
+  const min=parseInt(document.getElementById("m-min").value||"0");
+  if(!home||!away||isNaN(day)||isNaN(month)||isNaN(year)||isNaN(hour)){toast("Заполни все поля","err");return;}
+  if(day<1||day>31||month<1||month>12||hour<0||hour>23||min<0||min>59){toast("Проверь дату и время","err");return;}
+  // Формируем строку московского времени напрямую
+  const mm=String(month).padStart(2,'0'), dd=String(day).padStart(2,'0');
+  const hh=String(hour).padStart(2,'0'), mi=String(min).padStart(2,'0');
+  const matchTime=`${year}-${mm}-${dd}T${hh}:${mi}`;
+  const res=await fetch("/api/admin/matches",{method:"POST",headers:{"Content-Type":"application/json","x-admin-token":state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:matchTime})});
+  if(res.ok){
+    document.getElementById("m-home").value=document.getElementById("m-away").value="";
+    document.getElementById("m-day").value=document.getElementById("m-month").value=document.getElementById("m-hour").value="";
+    document.getElementById("m-min").value="0";
+    toast("Матч добавлен! ✅");loadAdminMatches();loadMatches();
+  } else toast("Ошибка","err");
 }
 async function addBatch(){
   const raw=document.getElementById('batch-input').value.trim();if(!raw){toast('Вставь матчи','err');return;}
