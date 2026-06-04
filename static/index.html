@@ -4,185 +4,335 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FIFA World Cup 2026 — Прогнозы</title>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --navy:#04101e;--navy2:#0b1a30;--navy3:#122040;
-  --gold:#c9a84c;--gold2:#f0c84a;--gold-light:#fde68a;
-  --red:#e63946;--green:#2ecc71;--blue:#3b82f6;
-  --border:rgba(201,168,76,0.2);--text:#f0eeea;--muted:#7a8faf;
+  --bg:#f0f4f8;--surface:#ffffff;--surface2:#f7f9fc;
+  --navy:#0a1628;--navy2:#1a2f52;
+  --gold:#b8860b;--gold2:#d4a017;--gold3:#f5c842;--gold-light:#fef3c7;
+  --red:#dc2626;--green:#16a34a;--blue:#1d4ed8;
+  --border:#e2e8f0;--border2:#cbd5e1;
+  --text:#0f172a;--text2:#334155;--muted:#64748b;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg:0 4px 6px rgba(0,0,0,.07),0 10px 40px rgba(0,0,0,.1);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Nunito',sans-serif;background:var(--navy);color:var(--text);min-height:100vh;overflow-x:hidden;}
-#bg-svg{position:fixed;inset:0;z-index:0;pointer-events:none;width:100%;height:100%;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
-/* LOGIN */
-#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;z-index:1;}
-.login-wrap{width:100%;max-width:440px;text-align:center;}
-.login-trophy{width:110px;height:130px;margin:0 auto 18px;filter:drop-shadow(0 0 28px rgba(201,168,76,0.55));animation:float 3s ease-in-out infinite;}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-.login-title{font-family:'Oswald',sans-serif;font-size:50px;font-weight:700;letter-spacing:4px;background:linear-gradient(135deg,var(--gold),var(--gold-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1;margin-bottom:4px;}
-.login-sub{font-size:11px;letter-spacing:5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
-.login-hosts{font-family:'Oswald',sans-serif;font-size:14px;color:var(--gold);letter-spacing:3px;margin-bottom:32px;}
-.login-card{background:rgba(11,26,48,0.88);border:1px solid var(--border);border-radius:18px;padding:32px;backdrop-filter:blur(24px);box-shadow:0 24px 80px rgba(0,0,0,0.5),inset 0 1px 0 rgba(201,168,76,0.1);}
-.login-card label{display:block;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;text-align:left;}
-.login-card input{width:100%;background:rgba(4,16,30,0.9);border:1px solid var(--border);border-radius:10px;padding:13px 16px;font-size:15px;color:var(--text);font-family:'Nunito',sans-serif;outline:none;margin-bottom:14px;transition:border-color .2s,box-shadow .2s;}
-.login-card input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,0.1);}
-.btn-login{width:100%;background:linear-gradient(135deg,#a87820,var(--gold),var(--gold2));border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:3px;color:#04101e;cursor:pointer;transition:transform .15s,box-shadow .2s;text-transform:uppercase;box-shadow:0 4px 24px rgba(201,168,76,0.3);}
-.btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 36px rgba(201,168,76,0.45);}
+/* ── HERO BACKGROUND ── */
+.hero-bg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(160deg, #0a1628 0%, #1a3a6e 40%, #0f2952 100%);
+  overflow:hidden;
+}
+.hero-bg::after{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 80%, rgba(212,160,23,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 20%, rgba(245,200,66,0.12) 0%, transparent 55%);
+}
+/* Pitch overlay */
+.pitch-lines{position:absolute;inset:0;opacity:0.07;}
 
-/* APP */
+/* ── LOGIN ── */
+#login-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:24px;position:relative;z-index:1;
+}
+.login-wrap{width:100%;max-width:460px;}
+
+/* Hero photo strip */
+.hero-photos{
+  display:flex;gap:4px;height:160px;border-radius:16px 16px 0 0;overflow:hidden;
+  margin-bottom:0;
+}
+.hero-photo{flex:1;background-size:cover;background-position:center;position:relative;}
+.hero-photo::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(10,22,40,0.55),transparent);}
+.hp1{background-image:url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&q=80');}
+.hp2{background-image:url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=400&q=80');}
+.hp3{background-image:url('https://images.unsplash.com/photo-1551854838-212c9a5cd90c?w=400&q=80');}
+
+.login-card{
+  background:rgba(255,255,255,0.97);
+  border-radius:0 0 18px 18px;
+  padding:32px;
+  box-shadow:0 24px 80px rgba(0,0,0,0.4);
+}
+.login-brand{
+  text-align:center;margin-bottom:24px;
+  display:flex;align-items:center;justify-content:center;gap:12px;
+}
+.login-trophy-wrap{
+  width:52px;height:52px;background:linear-gradient(135deg,var(--gold),var(--gold3));
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(184,134,11,0.4);
+}
+.login-title-text{text-align:left;}
+.login-title-text .t1{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy);letter-spacing:2px;line-height:1;}
+.login-title-text .t2{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.login-card label{display:block;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:600;}
+.login-card input{
+  width:100%;background:var(--bg);border:2px solid var(--border);border-radius:10px;
+  padding:13px 16px;font-size:15px;color:var(--text);font-family:'Nunito',sans-serif;
+  outline:none;margin-bottom:14px;transition:border-color .2s,box-shadow .2s;
+}
+.login-card input:focus{border-color:var(--gold2);box-shadow:0 0 0 3px rgba(212,160,23,0.12);}
+.btn-login{
+  width:100%;background:linear-gradient(135deg,var(--navy),var(--navy2));
+  border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;
+  font-family:'Oswald',sans-serif;letter-spacing:3px;color:#fff;cursor:pointer;
+  transition:transform .15s,box-shadow .2s;text-transform:uppercase;
+  box-shadow:0 4px 20px rgba(10,22,40,0.3);
+}
+.btn-login:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(10,22,40,0.4);}
+.login-hosts{text-align:center;font-size:13px;color:var(--muted);margin-top:14px;letter-spacing:1px;}
+
+/* ── APP ── */
 #app{display:none;min-height:100vh;position:relative;z-index:1;}
-header{background:rgba(4,10,20,0.96);border-bottom:1px solid var(--border);backdrop-filter:blur(20px);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;}
-.hdr-logo{font-family:'Oswald',sans-serif;font-size:19px;font-weight:700;letter-spacing:2px;background:linear-gradient(135deg,var(--gold),var(--gold2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:9px;}
-.hdr-right{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted);}
-.hdr-right strong{color:var(--text);}
-nav{background:rgba(4,10,20,0.8);border-bottom:1px solid var(--border);display:flex;padding:0 20px;overflow-x:auto;scrollbar-width:none;}
+
+/* Header with photo */
+.app-header-photo{
+  height:200px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#0a1628,#1a3a6e);
+}
+.app-header-photo img{width:100%;height:100%;object-fit:cover;opacity:0.45;}
+.app-header-photo-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(0deg,rgba(10,22,40,0.9) 0%,rgba(10,22,40,0.3) 60%,transparent 100%);
+  display:flex;flex-direction:column;justify-content:flex-end;padding:20px 28px;
+}
+.app-header-photo-overlay .logo{
+  font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;letter-spacing:3px;
+  color:#fff;display:flex;align-items:center;gap:10px;margin-bottom:4px;
+}
+.app-header-photo-overlay .logo span{
+  background:linear-gradient(135deg,var(--gold3),#fde68a);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.app-header-photo-overlay .greeting{font-size:13px;color:rgba(255,255,255,0.6);}
+.app-header-photo-overlay .greeting strong{color:#fff;}
+
+header.sticky-header{
+  background:rgba(255,255,255,0.97);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);padding:0 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:56px;position:sticky;top:0;z-index:100;
+  box-shadow:0 1px 8px rgba(0,0,0,0.08);
+}
+.sh-logo{font-family:'Oswald',sans-serif;font-size:17px;font-weight:700;letter-spacing:2px;color:var(--navy);display:flex;align-items:center;gap:8px;}
+.sh-right{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);}
+.sh-right strong{color:var(--text);}
+
+nav{
+  background:#fff;border-bottom:2px solid var(--border);
+  display:flex;padding:0 20px;overflow-x:auto;scrollbar-width:none;
+  box-shadow:0 2px 8px rgba(0,0,0,0.04);
+}
 nav::-webkit-scrollbar{display:none;}
-.tab{padding:14px 18px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s;font-family:'Oswald',sans-serif;}
-.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
-.tab:hover:not(.active){color:var(--text);}
-main{padding:24px 20px;max-width:780px;margin:0 auto;}
+.tab{
+  padding:14px 18px;font-size:11px;font-weight:700;letter-spacing:2px;
+  text-transform:uppercase;color:var(--muted);cursor:pointer;
+  border-bottom:3px solid transparent;margin-bottom:-2px;
+  white-space:nowrap;transition:color .2s,border-color .2s;font-family:'Oswald',sans-serif;
+}
+.tab.active{color:var(--navy);border-bottom-color:var(--gold2);}
+.tab:hover:not(.active){color:var(--text2);}
+main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .section{display:none;}
 .section.active{display:block;}
 
-/* BUTTONS */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:9px 18px;font-size:11px;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
-.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#04101e;box-shadow:0 2px 12px rgba(201,168,76,0.2);}
-.btn-gold:hover{box-shadow:0 4px 20px rgba(201,168,76,0.4);transform:translateY(-1px);}
-.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--muted);}
-.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
-.btn-red{background:rgba(230,57,70,0.1);border:1px solid rgba(230,57,70,0.25);color:var(--red);}
-.btn-red:hover{background:rgba(230,57,70,0.2);}
-.btn-vabank{background:linear-gradient(135deg,#7f1d1d,#dc2626);border:none;color:#fff;box-shadow:0 2px 12px rgba(220,38,38,0.3);}
-.btn-vabank:hover{box-shadow:0 4px 20px rgba(220,38,38,0.5);transform:translateY(-1px);}
-.btn-vabank.used{background:rgba(100,100,100,0.2);border:1px solid rgba(100,100,100,0.2);color:var(--muted);cursor:not-allowed;transform:none !important;box-shadow:none !important;}
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:none;border-radius:8px;padding:8px 16px;font-size:11px;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(10,22,40,0.2);}
+.btn-primary:hover{background:var(--navy2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(10,22,40,0.25);}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;box-shadow:0 2px 8px rgba(184,134,11,0.2);}
+.btn-gold:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(184,134,11,0.3);}
+.btn-ghost{background:transparent;border:1.5px solid var(--border2);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--navy);color:var(--navy);}
+.btn-red{background:rgba(220,38,38,0.08);border:1.5px solid rgba(220,38,38,0.2);color:var(--red);}
+.btn-red:hover{background:rgba(220,38,38,0.14);}
+.btn-vabank{background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;box-shadow:0 2px 8px rgba(220,38,38,0.25);}
+.btn-vabank:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(220,38,38,0.35);}
+.btn-vabank.used{background:#e2e8f0;color:var(--muted);cursor:not-allowed;transform:none !important;box-shadow:none !important;}
 .btn-sm{padding:6px 12px;font-size:10px;}
 .btn-full{width:100%;}
 
-/* CARD BASE */
-.card{background:linear-gradient(135deg,rgba(11,26,48,0.92) 0%,rgba(18,32,64,0.88) 100%);border:1px solid var(--border);border-radius:16px;backdrop-filter:blur(16px);box-shadow:0 8px 40px rgba(0,0,0,0.35),inset 0 1px 0 rgba(201,168,76,0.07);}
-
-/* MATCH CARD */
-.match-card{padding:20px 22px;margin-bottom:14px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;}
-.match-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:opacity .3s;}
-.match-card:hover{transform:translateY(-2px);box-shadow:0 16px 50px rgba(0,0,0,0.45),inset 0 1px 0 rgba(201,168,76,0.1);}
+/* ── MATCH CARD ── */
+.match-card{
+  background:#fff;border:1px solid var(--border);border-radius:14px;
+  padding:18px 20px;margin-bottom:12px;
+  box-shadow:var(--shadow);
+  transition:transform .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.match-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--gold2),transparent);opacity:0;transition:opacity .3s;
+}
+.match-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
 .match-card:hover::before{opacity:1;}
-.match-card.vabank-card{border-color:rgba(220,38,38,0.5);box-shadow:0 8px 40px rgba(220,38,38,0.15),inset 0 1px 0 rgba(220,38,38,0.1);}
-.card-deco{position:absolute;right:-15px;bottom:-15px;width:70px;height:70px;opacity:0.04;pointer-events:none;}
-.match-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
-.teams-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.team-block{display:flex;align-items:center;gap:9px;}
-.flag-img{width:26px;height:18px;border-radius:3px;object-fit:cover;box-shadow:0 2px 5px rgba(0,0,0,0.4);flex-shrink:0;}
-.flag-fb{width:26px;height:18px;border-radius:3px;background:rgba(201,168,76,0.12);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);flex-shrink:0;}
-.team-name{font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;letter-spacing:1px;}
-.vs{font-family:'Oswald',sans-serif;font-size:12px;color:var(--muted);}
+.match-card.vabank-card{border-color:rgba(220,38,38,0.35);background:linear-gradient(135deg,#fff,#fff8f8);}
+.card-deco{position:absolute;right:-12px;bottom:-12px;width:60px;height:60px;opacity:0.05;pointer-events:none;}
+.match-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;}
+.teams-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.team-block{display:flex;align-items:center;gap:8px;}
+.flag-img{width:26px;height:18px;border-radius:3px;object-fit:cover;box-shadow:0 1px 4px rgba(0,0,0,0.2);flex-shrink:0;}
+.flag-fb{width:26px;height:18px;border-radius:3px;background:var(--bg);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--muted);flex-shrink:0;font-weight:700;}
+.team-name{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;letter-spacing:.5px;color:var(--text);}
+.vs{font-family:'Oswald',sans-serif;font-size:12px;color:var(--muted);padding:0 2px;}
 .match-meta{text-align:right;flex-shrink:0;}
-.match-time{font-size:11px;color:var(--muted);margin-bottom:5px;font-family:'Oswald',sans-serif;letter-spacing:1px;}
+.match-time{font-size:11px;color:var(--muted);margin-bottom:5px;font-family:'Oswald',sans-serif;letter-spacing:.5px;}
+
+/* Badges */
 .badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:20px;font-family:'Oswald',sans-serif;}
-.b-upcoming{background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid rgba(201,168,76,0.22);}
-.b-live{background:rgba(230,57,70,0.14);color:var(--red);border:1px solid rgba(230,57,70,0.28);}
-.b-grace{background:rgba(46,204,113,0.1);color:var(--green);border:1px solid rgba(46,204,113,0.28);}
-.b-finished{background:rgba(120,135,160,0.08);color:var(--muted);border:1px solid rgba(120,135,160,0.14);}
+.b-upcoming{background:var(--gold-light);color:var(--gold);border:1px solid rgba(184,134,11,0.25);}
+.b-live{background:#fee2e2;color:var(--red);border:1px solid rgba(220,38,38,0.25);}
+.b-grace{background:#dcfce7;color:var(--green);border:1px solid rgba(22,163,74,0.25);}
+.b-finished{background:var(--bg);color:var(--muted);border:1px solid var(--border);}
 .dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
 .b-live .dot,.b-grace .dot{animation:blink 1s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-.result-display{font-family:'Oswald',sans-serif;font-size:48px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:4px;line-height:1;margin-bottom:12px;}
-.predict-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:'Oswald',sans-serif;}
-.predict-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
-.score-input{width:52px;height:50px;background:rgba(4,16,30,0.9);border:1px solid var(--border);border-radius:9px;text-align:center;font-size:22px;font-family:'Oswald',sans-serif;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;}
-.score-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,76,0.1);}
+
+.result-display{
+  font-family:'Oswald',sans-serif;font-size:44px;font-weight:700;
+  color:var(--navy);letter-spacing:4px;line-height:1;margin-bottom:12px;
+}
+.predict-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-family:'Oswald',sans-serif;font-weight:600;}
+.predict-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.score-input{
+  width:52px;height:50px;background:var(--bg);border:2px solid var(--border);
+  border-radius:9px;text-align:center;font-size:22px;font-family:'Oswald',sans-serif;
+  color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;
+}
+.score-input:focus{border-color:var(--gold2);box-shadow:0 0 0 3px rgba(212,160,23,0.1);}
 .score-colon{font-family:'Oswald',sans-serif;font-size:24px;color:var(--muted);font-weight:700;}
-.my-pred{display:inline-flex;align-items:center;gap:8px;background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.16);border-radius:8px;padding:7px 13px;font-size:13px;color:var(--muted);}
-.my-pred strong{font-family:'Oswald',sans-serif;font-size:18px;color:var(--gold);letter-spacing:1px;}
-.vb-label{background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;font-size:10px;font-family:'Oswald',sans-serif;letter-spacing:1px;padding:2px 7px;border-radius:4px;}
-.pts-b{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:.5px;}
-.pts-9,.pts-3x{background:rgba(220,38,38,0.12);color:#f87171;border:1px solid rgba(220,38,38,0.2);}
-.pts-3{background:rgba(46,204,113,0.1);color:var(--green);border:1px solid rgba(46,204,113,0.18);}
-.pts-1{background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid rgba(201,168,76,0.16);}
-.pts-0{background:rgba(120,135,160,0.06);color:var(--muted);border:1px solid rgba(120,135,160,0.1);}
-.preds-toggle{margin-top:12px;border-top:1px solid rgba(201,168,76,0.07);padding-top:10px;}
-.pred-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(201,168,76,0.04);font-size:14px;}
+.my-pred{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--gold-light);border:1.5px solid rgba(184,134,11,0.2);
+  border-radius:8px;padding:7px 13px;font-size:13px;color:var(--gold);
+}
+.my-pred strong{font-family:'Oswald',sans-serif;font-size:18px;color:var(--navy);letter-spacing:1px;}
+.vb-label{background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;font-size:9px;font-family:'Oswald',sans-serif;letter-spacing:1px;padding:2px 6px;border-radius:4px;}
+.pts-b{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:'Oswald',sans-serif;letter-spacing:.5px;}
+.pts-9{background:#fee2e2;color:var(--red);border:1px solid rgba(220,38,38,0.2);}
+.pts-3{background:#dcfce7;color:var(--green);border:1px solid rgba(22,163,74,0.2);}
+.pts-1{background:var(--gold-light);color:var(--gold);border:1px solid rgba(184,134,11,0.2);}
+.pts-0{background:var(--bg);color:var(--muted);border:1px solid var(--border);}
+.preds-toggle{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
+.pred-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;}
 .pred-row:last-child{border-bottom:none;}
-.pred-score{font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:1px;}
+.pred-score{font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:1px;color:var(--navy);}
 .arrow{display:inline-block;transition:transform .2s;font-size:10px;margin-left:3px;}
 .arrow.open{transform:rotate(180deg);}
 
-/* LEADERBOARD */
-.lb-wrap{border-radius:16px;overflow:hidden;}
-.lb-head{background:rgba(201,168,76,0.06);display:grid;grid-template-columns:46px 1fr 68px 46px 46px 60px 70px;gap:6px;padding:10px 20px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'Oswald',sans-serif;border-bottom:1px solid var(--border);}
-.lb-row{display:grid;grid-template-columns:46px 1fr 68px 46px 46px 60px 70px;gap:6px;padding:14px 20px;align-items:center;border-bottom:1px solid rgba(201,168,76,0.05);transition:background .15s;}
+/* ── LEADERBOARD ── */
+.lb-wrap{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);}
+.lb-head{background:var(--navy);display:grid;grid-template-columns:46px 1fr 65px 44px 44px 56px 66px;gap:6px;padding:10px 20px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.6);font-family:'Oswald',sans-serif;}
+.lb-row{display:grid;grid-template-columns:46px 1fr 65px 44px 44px 56px 66px;gap:6px;padding:13px 20px;align-items:center;border-bottom:1px solid var(--border);transition:background .15s;}
 .lb-row:last-child{border-bottom:none;}
-.lb-row:hover{background:rgba(201,168,76,0.03);}
-.lb-rank{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--muted);text-align:center;}
-.r1{background:linear-gradient(135deg,#c9a84c,#fde68a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.r2{background:linear-gradient(135deg,#9ca3af,#e5e7eb);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.r3{background:linear-gradient(135deg,#cd7f32,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.lb-name{font-weight:600;font-size:14px;}
-.lb-pts{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--gold);text-align:right;}
-.lb-stat{text-align:center;color:var(--muted);font-size:12px;}
-.lb-pct{text-align:center;font-size:12px;}
-.lb-bonus{text-align:center;font-size:11px;color:#a78bfa;}
+.lb-row:nth-child(2){background:linear-gradient(90deg,#fffbeb,#fff);}
+.lb-row:nth-child(3){background:linear-gradient(90deg,#f8f9fa,#fff);}
+.lb-row:hover{background:var(--bg);}
+.lb-rank{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;text-align:center;color:var(--muted);}
+.r1{color:var(--gold2);}
+.r2{color:#9ca3af;}
+.r3{color:#cd7f32;}
+.lb-name{font-weight:700;font-size:14px;color:var(--text);}
+.lb-pts{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy);text-align:right;}
+.lb-stat{text-align:center;color:var(--muted);font-size:13px;}
+.lb-pct{text-align:center;font-size:12px;font-weight:600;}
+.lb-bonus{text-align:center;font-size:11px;color:#7c3aed;font-weight:600;}
+
+/* ── PHOTO SECTIONS ── */
+.section-banner{
+  border-radius:12px;overflow:hidden;margin-bottom:16px;
+  height:120px;position:relative;
+}
+.section-banner img{width:100%;height:100%;object-fit:cover;}
+.section-banner-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(10,22,40,0.75) 0%,rgba(10,22,40,0.2) 100%);
+  display:flex;align-items:center;padding:0 24px;
+}
+.section-banner-title{
+  font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;
+  letter-spacing:2px;color:#fff;text-transform:uppercase;
+}
 
 /* ARCHIVE */
-.arch-match{padding:18px 20px;margin-bottom:12px;}
-.arch-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;cursor:pointer;}
-.arch-score{font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;color:var(--gold);letter-spacing:2px;}
-.arch-preds{margin-top:10px;}
+.arch-match{background:#fff;border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);}
+.arch-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;transition:background .15s;}
+.arch-header:hover{background:var(--bg);}
+.arch-score{font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;color:var(--navy);letter-spacing:2px;}
+.arch-preds{padding:0 18px 14px;border-top:1px solid var(--border);}
 
 /* TOURNAMENT */
-.tourn-card{padding:24px;margin-bottom:14px;}
-.tourn-head{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
-.tourn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
-.tourn-field label{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-family:'Oswald',sans-serif;}
-.tourn-field input{width:100%;background:rgba(4,16,30,0.9);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:14px;color:var(--text);font-family:'Nunito',sans-serif;outline:none;transition:border-color .2s;}
-.tourn-field input:focus{border-color:var(--gold);}
-.bonus-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.2);border-radius:20px;padding:2px 10px;font-size:11px;color:#a78bfa;font-family:'Oswald',sans-serif;}
+.tourn-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px;box-shadow:var(--shadow);}
+.tourn-head{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--navy);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);}
+.tourn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.tourn-field label{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:600;}
+.tourn-field input{width:100%;background:var(--bg);border:2px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:'Nunito',sans-serif;outline:none;transition:border-color .2s;}
+.tourn-field input:focus{border-color:var(--gold2);}
+.bonus-pill{display:inline-flex;align-items:center;gap:5px;background:#ede9fe;border:1px solid #ddd6fe;border-radius:20px;padding:2px 10px;font-size:11px;color:#7c3aed;font-family:'Oswald',sans-serif;font-weight:600;}
 
 /* RULES */
-.rules-card{padding:26px;margin-bottom:14px;}
-.rules-card h3{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;padding-bottom:9px;border-bottom:1px solid var(--border);}
-.rules-card p,.rules-card li{font-size:14px;line-height:1.8;color:#bfcfe8;margin-bottom:7px;}
+.rules-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:14px;box-shadow:var(--shadow);}
+.rules-card h3{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--navy);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);}
+.rules-card p,.rules-card li{font-size:14px;line-height:1.8;color:var(--text2);margin-bottom:7px;}
 .rules-card ul{padding-left:18px;}
 .rule-pts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
-.rule-pt{background:rgba(4,16,30,0.7);border:1px solid var(--border);border-radius:11px;padding:16px;text-align:center;}
-.rule-pt-num{font-family:'Oswald',sans-serif;font-size:42px;font-weight:700;background:linear-gradient(135deg,var(--gold),var(--gold-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.rule-pt-label{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;}
-.rule-vb{background:rgba(127,29,29,0.2);border:1px solid rgba(220,38,38,0.25);border-radius:11px;padding:16px;margin:14px 0;}
-.rule-vb-title{font-family:'Oswald',sans-serif;font-size:16px;color:#f87171;letter-spacing:1px;margin-bottom:8px;}
+.rule-pt{background:var(--bg);border:2px solid var(--border);border-radius:11px;padding:16px;text-align:center;}
+.rule-pt-num{font-family:'Oswald',sans-serif;font-size:42px;font-weight:700;color:var(--navy);}
+.rule-pt-label{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;font-weight:600;}
+.rule-vb{background:#fef2f2;border:2px solid rgba(220,38,38,0.2);border-radius:11px;padding:16px;margin:14px 0;}
+.rule-vb-title{font-family:'Oswald',sans-serif;font-size:15px;color:var(--red);letter-spacing:1px;margin-bottom:8px;}
 
 /* ADMIN */
-.admin-block{margin-bottom:28px;}
-.admin-block h3{font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.admin-block{margin-bottom:24px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);}
+.admin-block h3{font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:2px;color:var(--navy);text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--border);}
 .form-row{display:flex;gap:9px;margin-bottom:10px;flex-wrap:wrap;}
-.form-row input,.form-row textarea{flex:1;min-width:110px;background:rgba(4,16,30,0.9);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:13px;color:var(--text);font-family:'Nunito',sans-serif;outline:none;transition:border-color .2s;}
-.form-row input:focus,.form-row textarea:focus{border-color:var(--gold);}
-.form-row textarea{min-height:100px;resize:vertical;}
+.form-row input,.form-row textarea{flex:1;min-width:110px;background:var(--bg);border:2px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:'Nunito',sans-serif;outline:none;transition:border-color .2s;}
+.form-row input:focus,.form-row textarea:focus{border-color:var(--gold2);}
+.form-row textarea{min-height:90px;resize:vertical;}
 .adm-table{width:100%;border-collapse:collapse;font-size:12px;}
-.adm-table th{text-align:left;padding:7px 11px;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);border-bottom:1px solid var(--border);font-family:'Oswald',sans-serif;}
-.adm-table td{padding:9px 11px;border-bottom:1px solid rgba(201,168,76,0.04);vertical-align:middle;}
+.adm-table th{text-align:left;padding:7px 10px;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);border-bottom:2px solid var(--border);font-family:'Oswald',sans-serif;}
+.adm-table td{padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
 .adm-table tr:last-child td{border-bottom:none;}
-.token-pill{font-family:monospace;font-size:10px;background:rgba(4,16,30,0.8);border:1px solid var(--border);padding:2px 7px;border-radius:5px;cursor:pointer;}
-.token-pill:hover{border-color:var(--gold);}
-.tg-ok{color:var(--green);font-size:11px;}
+.token-pill{font-family:monospace;font-size:10px;background:var(--bg);border:1px solid var(--border2);padding:2px 7px;border-radius:5px;cursor:pointer;}
+.token-pill:hover{border-color:var(--navy);}
+.tg-ok{color:var(--green);font-size:11px;font-weight:600;}
 .tg-no{color:var(--muted);font-size:11px;}
-.hint{font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.6;}
+.hint{font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.7;background:var(--bg);border-radius:8px;padding:10px 12px;}
 
 /* TOAST */
-.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:rgba(11,26,48,0.97);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:10px;padding:11px 22px;font-size:14px;z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#fff;border:1.5px solid var(--border2);border-radius:10px;padding:11px 22px;font-size:14px;z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;box-shadow:var(--shadow-lg);}
 .toast.show{opacity:1;}
-.toast.ok{border-color:rgba(46,204,113,0.4);color:var(--green);}
-.toast.err{border-color:rgba(230,57,70,0.4);color:var(--red);}
-.toast.info{border-color:rgba(201,168,76,0.4);color:var(--gold);}
+.toast.ok{border-color:rgba(22,163,74,0.4);color:var(--green);}
+.toast.err{border-color:rgba(220,38,38,0.4);color:var(--red);}
+.toast.info{border-color:rgba(184,134,11,0.4);color:var(--gold);}
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
 .empty .ico{font-size:44px;margin-bottom:10px;}
-.section-title{font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+.section-title{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+
+/* Important banner */
+.import-banner{
+  background:linear-gradient(135deg,var(--navy),var(--navy2));
+  border-radius:12px;padding:16px 20px;margin-bottom:16px;
+  display:flex;align-items:center;gap:14px;
+  color:#fff;
+}
+.import-banner .ib-icon{font-size:28px;flex-shrink:0;}
+.import-banner .ib-text{font-size:13px;line-height:1.5;color:rgba(255,255,255,0.85);}
+.import-banner .ib-text strong{color:#fff;}
+.import-banner .ib-action{margin-left:auto;flex-shrink:0;}
+
 @media(max-width:700px){
-  .lb-head,.lb-row{grid-template-columns:36px 1fr 56px 38px 38px;}
+  .lb-head,.lb-row{grid-template-columns:36px 1fr 54px 36px 36px;}
   .lb-head>*:nth-child(n+6),.lb-row>*:nth-child(n+6){display:none;}
-  main{padding:14px;}
-  header{padding:0 14px;}
-  nav{padding:0 10px;}
+  main{padding:12px;}
+  .app-header-photo{height:150px;}
+  .hero-photos{height:130px;}
   .team-name{font-size:16px;}
   .tourn-grid{grid-template-columns:1fr;}
 }
@@ -190,93 +340,54 @@ main{padding:24px 20px;max-width:780px;margin:0 auto;}
 </head>
 <body>
 
-<!-- SVG BACKGROUND -->
-<svg id="bg-svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <radialGradient id="g1" cx="50%" cy="0%" r="60%"><stop offset="0%" stop-color="#c9a84c" stop-opacity=".10"/><stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/></radialGradient>
-    <radialGradient id="g2" cx="90%" cy="85%" r="45%"><stop offset="0%" stop-color="#1a4fa0" stop-opacity=".13"/><stop offset="100%" stop-color="#1a4fa0" stop-opacity="0"/></radialGradient>
-    <radialGradient id="g3" cx="8%" cy="65%" r="38%"><stop offset="0%" stop-color="#c9a84c" stop-opacity=".07"/><stop offset="100%" stop-color="#c9a84c" stop-opacity="0"/></radialGradient>
-  </defs>
-  <rect width="1440" height="900" fill="#04101e"/>
-  <rect width="1440" height="900" fill="url(#g1)"/>
-  <rect width="1440" height="900" fill="url(#g2)"/>
-  <rect width="1440" height="900" fill="url(#g3)"/>
-  <!-- Pitch lines -->
-  <g opacity="0.038" stroke="#c9a84c" stroke-width="1.5" fill="none">
-    <circle cx="720" cy="450" r="115"/>
-    <circle cx="720" cy="450" r="4" fill="#c9a84c" stroke="none"/>
-    <line x1="0" y1="450" x2="1440" y2="450"/>
-    <rect x="110" y="75" width="1220" height="750" rx="4"/>
-    <rect x="110" y="248" width="248" height="404"/>
-    <rect x="1082" y="248" width="248" height="404"/>
-    <rect x="110" y="338" width="104" height="224"/>
-    <rect x="1226" y="338" width="104" height="224"/>
-    <path d="M110,75 A32,32 0 0,1 142,107"/><path d="M1330,75 A32,32 0 0,0 1298,107"/>
-    <path d="M110,825 A32,32 0 0,0 142,793"/><path d="M1330,825 A32,32 0 0,1 1298,793"/>
-    <circle cx="318" cy="450" r="4" fill="#c9a84c" stroke="none"/>
-    <circle cx="1122" cy="450" r="4" fill="#c9a84c" stroke="none"/>
-    <path d="M248,335 A128,128 0 0,1 248,565" stroke-dasharray="8,6"/>
-    <path d="M1192,335 A128,128 0 0,0 1192,565" stroke-dasharray="8,6"/>
-  </g>
-  <!-- Big footballs -->
-  <g transform="translate(1200,50) scale(1.5)" opacity="0.055">
-    <circle cx="80" cy="80" r="76" fill="none" stroke="#c9a84c" stroke-width="1.8"/>
-    <polygon points="80,10 100,40 135,40 112,62 122,96 80,76 38,96 48,62 25,40 60,40" fill="none" stroke="#c9a84c" stroke-width="1.4"/>
-    <circle cx="80" cy="80" r="18" fill="none" stroke="#c9a84c" stroke-width="1.4"/>
-  </g>
-  <g transform="translate(-40,640) scale(1.1)" opacity="0.042">
-    <circle cx="80" cy="80" r="76" fill="none" stroke="#c9a84c" stroke-width="1.8"/>
-    <polygon points="80,10 100,40 135,40 112,62 122,96 80,76 38,96 48,62 25,40 60,40" fill="none" stroke="#c9a84c" stroke-width="1.4"/>
-  </g>
-  <!-- Stars -->
-  <g fill="#c9a84c" opacity="0.14">
-    <polygon points="96,42 99,52 110,52 101,58 104,68 96,63 88,68 91,58 82,52 93,52"/>
-    <polygon points="1340,120 1342,127 1350,127 1344,131 1346,138 1340,134 1334,138 1336,131 1330,127 1338,127" transform="scale(0.8) translate(340,50)"/>
-    <polygon points="96,42 99,52 110,52 101,58 104,68 96,63 88,68 91,58 82,52 93,52" transform="scale(0.5) translate(1100,1400)"/>
-  </g>
-</svg>
-
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-wrap">
-    <svg class="login-trophy" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#a07020"/><stop offset="45%" stop-color="#f0c84a"/><stop offset="100%" stop-color="#c9a84c"/>
-        </linearGradient>
-      </defs>
-      <ellipse cx="80" cy="192" rx="38" ry="5" fill="#c9a84c" opacity="0.25"/>
-      <rect x="46" y="176" width="68" height="11" rx="3" fill="url(#tg)"/>
-      <rect x="56" y="164" width="48" height="14" rx="2" fill="url(#tg)"/>
-      <rect x="68" y="136" width="24" height="30" rx="3" fill="url(#tg)"/>
-      <path d="M32,22 L128,22 L116,132 C113,143 103,150 80,150 C57,150 47,143 44,132 Z" fill="url(#tg)"/>
-      <path d="M46,32 L54,122 C55,130 59,136 68,138 L64,32 Z" fill="white" opacity="0.1"/>
-      <path d="M32,22 C12,22 6,56 6,72 C6,92 19,102 32,97" stroke="url(#tg)" stroke-width="8" fill="none" stroke-linecap="round"/>
-      <path d="M128,22 C148,22 154,56 154,72 C154,92 141,102 128,97" stroke="url(#tg)" stroke-width="8" fill="none" stroke-linecap="round"/>
-      <circle cx="80" cy="17" r="10" fill="#0b1a30" stroke="url(#tg)" stroke-width="1.5"/>
-      <circle cx="80" cy="17" r="5" fill="url(#tg)" opacity="0.7"/>
-      <polygon points="80,42 83,52 93,52 85,58 88,68 80,62 72,68 75,58 67,52 77,52" fill="white" opacity="0.55"/>
-    </svg>
-    <div class="login-title">WORLD CUP</div>
-    <div class="login-sub">Турнир прогнозов</div>
-    <div class="login-hosts">🇺🇸 USA · 🇨🇦 CAN · 🇲🇽 MEX 2026</div>
+    <div class="hero-photos">
+      <div class="hero-photo hp1"></div>
+      <div class="hero-photo hp2"></div>
+      <div class="hero-photo hp3"></div>
+    </div>
     <div class="login-card">
-      <label>Введи свой персональный токен</label>
-      <input type="text" id="token-input" placeholder="Твой токен" autocomplete="off" autocorrect="off" spellcheck="false">
-      <button class="btn-login" onclick="login()">⚽ &nbsp;Войти в турнир</button>
+      <div class="login-brand">
+        <div class="login-trophy-wrap">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <path d="M5,3 L21,3 L19,18 C18.5,20.5 16,22 13,22 C10,22 7.5,20.5 7,18 Z" fill="white" opacity="0.9"/>
+            <path d="M5,3 C1,3 0,8 0,11 C0,14.5 3,16 5,15.5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M21,3 C25,3 26,8 26,11 C26,14.5 23,16 21,15.5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <rect x="10" y="22" width="6" height="4" rx="1" fill="white" opacity="0.9"/>
+            <rect x="7" y="26" width="12" height="2.5" rx="1" fill="white" opacity="0.7"/>
+          </svg>
+        </div>
+        <div class="login-title-text">
+          <div class="t1">WORLD CUP 2026</div>
+          <div class="t2">Турнир прогнозов</div>
+        </div>
+      </div>
+      <label>Твой персональный токен</label>
+      <input type="text" id="token-input" placeholder="Введи токен для входа" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="btn-login" onclick="login()">⚽ Войти в турнир</button>
+      <div class="login-hosts">🇺🇸 USA · 🇨🇦 CANADA · 🇲🇽 MEXICO</div>
     </div>
   </div>
 </div>
 
 <!-- APP -->
 <div id="app">
-  <header>
-    <div class="hdr-logo">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10.5" stroke="#c9a84c" stroke-width="1.5"/><polygon points="12,3 14,9 20,9 15,13 17,19 12,15 7,19 9,13 4,9 10,9" fill="#c9a84c" opacity="0.85"/></svg>
+  <div class="app-header-photo">
+    <img src="https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=1400&q=80" alt="Football stadium" onerror="this.style.display='none'">
+    <div class="app-header-photo-overlay">
+      <div class="logo">⚽ <span>WORLD CUP 2026</span> ПРОГНОЗЫ</div>
+      <div class="greeting">Привет, <strong id="user-name"></strong>! Делай прогнозы и побеждай 🏆</div>
+    </div>
+  </div>
+  <header class="sticky-header">
+    <div class="sh-logo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10.5" stroke="#0a1628" stroke-width="1.5"/><polygon points="12,3 14,9 20,9 15,13 17,19 12,15 7,19 9,13 4,9 10,9" fill="#0a1628" opacity="0.8"/></svg>
       WC 2026 ПРОГНОЗЫ
     </div>
-    <div class="hdr-right">
-      <span>Привет, <strong id="user-name"></strong></span>
+    <div class="sh-right">
+      <strong id="user-name2"></strong>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Выйти</button>
     </div>
   </header>
@@ -292,22 +403,39 @@ main{padding:24px 20px;max-width:780px;margin:0 auto;}
     <div id="section-matches" class="section active"><div id="matches-list"></div></div>
 
     <div id="section-tournament" class="section">
+      <div class="section-banner">
+        <img src="https://images.unsplash.com/photo-1610201429897-2949a490cf6a?w=800&q=80" alt="Trophy">
+        <div class="section-banner-overlay"><div class="section-banner-title">🌍 Прогноз на турнир</div></div>
+      </div>
       <div id="tourn-content"></div>
     </div>
 
-    <div id="section-leaderboard" class="section"><div id="lb-content"></div></div>
+    <div id="section-leaderboard" class="section">
+      <div class="section-banner">
+        <img src="https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?w=800&q=80" alt="Stadium crowd">
+        <div class="section-banner-overlay"><div class="section-banner-title">🏆 Таблица лидеров</div></div>
+      </div>
+      <div id="lb-content"></div>
+    </div>
 
     <div id="section-archive" class="section">
-      <div class="section-title">Архив завершённых матчей</div>
+      <div class="section-banner">
+        <img src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80" alt="Football">
+        <div class="section-banner-overlay"><div class="section-banner-title">📂 Архив матчей</div></div>
+      </div>
       <div id="archive-content"></div>
     </div>
 
     <div id="section-rules" class="section">
-      <div class="rules-card card">
+      <div class="section-banner">
+        <img src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80" alt="Football rules">
+        <div class="section-banner-overlay"><div class="section-banner-title">📋 Правила турнира</div></div>
+      </div>
+      <div class="rules-card">
         <h3>🏆 О турнире</h3>
         <p>Каждый участник делает прогноз на точный счёт матча до его начала. После старта — 1 минута грейс-периода. Побеждает тот, кто наберёт больше всего очков.</p>
       </div>
-      <div class="rules-card card">
+      <div class="rules-card">
         <h3>⚡ Очки за матчи</h3>
         <div class="rule-pts">
           <div class="rule-pt"><div class="rule-pt-num">3</div><div class="rule-pt-label">🎯 Точный счёт угадан полностью</div></div>
@@ -316,32 +444,33 @@ main{padding:24px 20px;max-width:780px;margin:0 auto;}
         <div class="rule-vb">
           <div class="rule-vb-title">🔥 ВА-БАНК — один раз за турнир!</div>
           <ul>
-            <li>Точный счёт → <strong style="color:#f87171">9 очков</strong></li>
-            <li>Исход → <strong style="color:#f87171">3 очка</strong></li>
+            <li>Точный счёт → <strong style="color:var(--red)">9 очков</strong></li>
+            <li>Исход → <strong style="color:var(--red)">3 очка</strong></li>
             <li>Ошибка → 0 очков (ставка сгорает)</li>
           </ul>
         </div>
       </div>
-      <div class="rules-card card">
+      <div class="rules-card">
         <h3>🌍 Бонусы за весь турнир</h3>
         <ul>
-          <li>Угадал чемпиона → <strong style="color:var(--gold)">+10 очков</strong></li>
-          <li>Угадал финалиста (за каждого) → <strong style="color:var(--gold)">+5 очков</strong></li>
-          <li>Угадал лучшего бомбардира → <strong style="color:var(--gold)">+10 очков</strong></li>
+          <li>Угадал чемпиона → <strong style="color:var(--navy)">+10 очков</strong></li>
+          <li>Угадал финалиста (за каждого) → <strong style="color:var(--navy)">+5 очков</strong></li>
+          <li>Угадал лучшего бомбардира → <strong style="color:var(--navy)">+10 очков</strong></li>
         </ul>
-        <p style="margin-top:10px">Прогноз на весь турнир можно изменить до начала первого матча.</p>
+        <p style="margin-top:10px;color:var(--muted)">Прогноз на турнир можно изменить до начала первого матча.</p>
       </div>
-      <div class="rules-card card">
-        <h3>⏰ Дедлайн</h3>
-        <p>Прогнозы принимаются <strong style="color:var(--gold)">в течение 1 минуты после старта матча</strong>. Потом — закрыто.</p>
-        <p>Не успел → <strong style="color:var(--muted)">😴 нет прогноза</strong> в рассылке, 0 очков.</p>
+      <div class="rules-card">
+        <h3>⏰ Дедлайн ставок</h3>
+        <p>Прогнозы принимаются <strong>в течение 1 минуты после официального старта матча</strong>. После — закрыто автоматически.</p>
+        <p>Не успел → <strong style="color:var(--muted)">😴 нет прогноза</strong> в Telegram рассылке, 0 очков за матч.</p>
       </div>
     </div>
 
     <div id="section-admin" class="section">
+      <div id="import-banner-wrap"></div>
       <div class="admin-block">
         <h3>👥 Участники</h3>
-        <div class="form-row"><input id="p-name" placeholder="Имя участника"><button class="btn btn-gold" onclick="addPlayer()">Добавить</button></div>
+        <div class="form-row"><input id="p-name" placeholder="Имя участника"><button class="btn btn-primary" onclick="addPlayer()">Добавить</button></div>
         <table class="adm-table"><thead><tr><th>Имя</th><th>Токен</th><th>Telegram</th><th></th></tr></thead><tbody id="players-table"></tbody></table>
       </div>
       <div class="admin-block">
@@ -350,25 +479,23 @@ main{padding:24px 20px;max-width:780px;margin:0 auto;}
           <input id="m-home" placeholder="Команда 1">
           <input id="m-away" placeholder="Команда 2">
           <input id="m-time" type="datetime-local">
-          <button class="btn btn-gold" onclick="addMatch()">Добавить</button>
+          <button class="btn btn-primary" onclick="addMatch()">Добавить</button>
         </div>
       </div>
       <div class="admin-block">
-        <h3>📋 Массовое добавление матчей</h3>
-        <p class="hint">Вставь матчи в формате одна строка = один матч:<br>
-        <code style="color:var(--gold)">Команда1 — Команда2 — 2026-06-11T18:00</code><br>
-        Время вводи по Московскому (UTC+3), оно будет сконвертировано автоматически.</p>
+        <h3>📋 Массовое добавление</h3>
+        <p class="hint">Одна строка = один матч: <code style="color:var(--navy)">Команда1 — Команда2 — 2026-06-11T21:00</code><br>Время вводи по Московскому (UTC+3), будет автоматически сконвертировано.</p>
         <div class="form-row"><textarea id="batch-input" placeholder="Аргентина — Бразилия — 2026-06-11T21:00&#10;Франция — Германия — 2026-06-12T18:00"></textarea></div>
-        <button class="btn btn-gold" onclick="addBatch()">Добавить все матчи</button>
+        <button class="btn btn-primary" onclick="addBatch()">Добавить все матчи</button>
       </div>
       <div class="admin-block">
-        <h3>🏆 Итоги турнира (бонусы)</h3>
+        <h3>🏆 Итоги турнира (бонусные очки)</h3>
         <div class="form-row">
           <input id="tr-champion" placeholder="Чемпион">
           <input id="tr-fin1" placeholder="Финалист 1">
           <input id="tr-fin2" placeholder="Финалист 2">
           <input id="tr-scorer" placeholder="Лучший бомбардир">
-          <button class="btn btn-gold" onclick="setTournamentResult()">Сохранить</button>
+          <button class="btn btn-primary" onclick="setTournamentResult()">Сохранить</button>
         </div>
       </div>
       <div class="admin-block">
@@ -382,6 +509,82 @@ main{padding:24px 20px;max-width:780px;margin:0 auto;}
 <div class="toast" id="toast"></div>
 
 <script>
+// ── Полный календарь ЧМ 2026 (72 матча, время UTC) ──
+const WC2026_MATCHES = [
+  {home_team:"Мексика",away_team:"ЮАР",match_time:"2026-06-11T19:00"},
+  {home_team:"Южная Корея",away_team:"Чехия",match_time:"2026-06-12T02:00"},
+  {home_team:"Канада",away_team:"Босния и Герцеговина",match_time:"2026-06-12T19:00"},
+  {home_team:"США",away_team:"Парагвай",match_time:"2026-06-13T01:00"},
+  {home_team:"Катар",away_team:"Швейцария",match_time:"2026-06-13T19:00"},
+  {home_team:"Бразилия",away_team:"Марокко",match_time:"2026-06-13T22:00"},
+  {home_team:"Гаити",away_team:"Шотландия",match_time:"2026-06-14T01:00"},
+  {home_team:"Австралия",away_team:"Турция",match_time:"2026-06-14T04:00"},
+  {home_team:"Германия",away_team:"Кюрасао",match_time:"2026-06-14T17:00"},
+  {home_team:"Нидерланды",away_team:"Япония",match_time:"2026-06-14T20:00"},
+  {home_team:"Кот-д'Ивуар",away_team:"Эквадор",match_time:"2026-06-14T23:00"},
+  {home_team:"Швеция",away_team:"Тунис",match_time:"2026-06-15T02:00"},
+  {home_team:"Испания",away_team:"Кабо-Верде",match_time:"2026-06-15T16:00"},
+  {home_team:"Бельгия",away_team:"Египет",match_time:"2026-06-15T19:00"},
+  {home_team:"Саудовская Аравия",away_team:"Уругвай",match_time:"2026-06-15T22:00"},
+  {home_team:"Иран",away_team:"Новая Зеландия",match_time:"2026-06-16T01:00"},
+  {home_team:"Франция",away_team:"Сенегал",match_time:"2026-06-16T19:00"},
+  {home_team:"Ирак",away_team:"Норвегия",match_time:"2026-06-16T22:00"},
+  {home_team:"Аргентина",away_team:"Алжир",match_time:"2026-06-17T01:00"},
+  {home_team:"Австрия",away_team:"Иордания",match_time:"2026-06-17T04:00"},
+  {home_team:"Португалия",away_team:"ДР Конго",match_time:"2026-06-17T17:00"},
+  {home_team:"Англия",away_team:"Хорватия",match_time:"2026-06-17T20:00"},
+  {home_team:"Гана",away_team:"Панама",match_time:"2026-06-17T23:00"},
+  {home_team:"Узбекистан",away_team:"Колумбия",match_time:"2026-06-18T02:00"},
+  {home_team:"Чехия",away_team:"ЮАР",match_time:"2026-06-18T16:00"},
+  {home_team:"Швейцария",away_team:"Босния и Герцеговина",match_time:"2026-06-18T19:00"},
+  {home_team:"Канада",away_team:"Катар",match_time:"2026-06-18T22:00"},
+  {home_team:"Мексика",away_team:"Южная Корея",match_time:"2026-06-19T01:00"},
+  {home_team:"США",away_team:"Австралия",match_time:"2026-06-19T19:00"},
+  {home_team:"Шотландия",away_team:"Марокко",match_time:"2026-06-19T22:00"},
+  {home_team:"Бразилия",away_team:"Гаити",match_time:"2026-06-20T00:30"},
+  {home_team:"Турция",away_team:"Парагвай",match_time:"2026-06-20T03:00"},
+  {home_team:"Нидерланды",away_team:"Швеция",match_time:"2026-06-20T17:00"},
+  {home_team:"Германия",away_team:"Кот-д'Ивуар",match_time:"2026-06-20T20:00"},
+  {home_team:"Эквадор",away_team:"Кюрасао",match_time:"2026-06-21T00:00"},
+  {home_team:"Тунис",away_team:"Япония",match_time:"2026-06-21T04:00"},
+  {home_team:"Испания",away_team:"Саудовская Аравия",match_time:"2026-06-21T16:00"},
+  {home_team:"Бельгия",away_team:"Иран",match_time:"2026-06-21T19:00"},
+  {home_team:"Уругвай",away_team:"Кабо-Верде",match_time:"2026-06-21T22:00"},
+  {home_team:"Новая Зеландия",away_team:"Египет",match_time:"2026-06-22T01:00"},
+  {home_team:"Аргентина",away_team:"Австрия",match_time:"2026-06-22T17:00"},
+  {home_team:"Франция",away_team:"Ирак",match_time:"2026-06-22T21:00"},
+  {home_team:"Норвегия",away_team:"Сенегал",match_time:"2026-06-23T00:00"},
+  {home_team:"Иордания",away_team:"Алжир",match_time:"2026-06-23T03:00"},
+  {home_team:"Португалия",away_team:"Узбекистан",match_time:"2026-06-23T17:00"},
+  {home_team:"Англия",away_team:"Гана",match_time:"2026-06-23T20:00"},
+  {home_team:"Панама",away_team:"Хорватия",match_time:"2026-06-23T23:00"},
+  {home_team:"Колумбия",away_team:"ДР Конго",match_time:"2026-06-24T02:00"},
+  {home_team:"Швейцария",away_team:"Канада",match_time:"2026-06-24T19:00"},
+  {home_team:"Босния и Герцеговина",away_team:"Катар",match_time:"2026-06-24T19:00"},
+  {home_team:"Марокко",away_team:"Гаити",match_time:"2026-06-24T22:00"},
+  {home_team:"Шотландия",away_team:"Бразилия",match_time:"2026-06-24T22:00"},
+  {home_team:"ЮАР",away_team:"Южная Корея",match_time:"2026-06-25T01:00"},
+  {home_team:"Чехия",away_team:"Мексика",match_time:"2026-06-25T01:00"},
+  {home_team:"Эквадор",away_team:"Германия",match_time:"2026-06-25T20:00"},
+  {home_team:"Кюрасао",away_team:"Кот-д'Ивуар",match_time:"2026-06-25T20:00"},
+  {home_team:"Тунис",away_team:"Нидерланды",match_time:"2026-06-25T23:00"},
+  {home_team:"Япония",away_team:"Швеция",match_time:"2026-06-25T23:00"},
+  {home_team:"Парагвай",away_team:"Австралия",match_time:"2026-06-26T02:00"},
+  {home_team:"Турция",away_team:"США",match_time:"2026-06-26T02:00"},
+  {home_team:"Норвегия",away_team:"Франция",match_time:"2026-06-26T19:00"},
+  {home_team:"Сенегал",away_team:"Ирак",match_time:"2026-06-26T19:00"},
+  {home_team:"Уругвай",away_team:"Испания",match_time:"2026-06-27T00:00"},
+  {home_team:"Кабо-Верде",away_team:"Саудовская Аравия",match_time:"2026-06-27T00:00"},
+  {home_team:"Египет",away_team:"Иран",match_time:"2026-06-27T03:00"},
+  {home_team:"Новая Зеландия",away_team:"Бельгия",match_time:"2026-06-27T03:00"},
+  {home_team:"Панама",away_team:"Англия",match_time:"2026-06-27T21:00"},
+  {home_team:"Хорватия",away_team:"Гана",match_time:"2026-06-27T21:00"},
+  {home_team:"Колумбия",away_team:"Португалия",match_time:"2026-06-27T23:30"},
+  {home_team:"ДР Конго",away_team:"Узбекистан",match_time:"2026-06-27T23:30"},
+  {home_team:"Иордания",away_team:"Аргентина",match_time:"2026-06-28T02:00"},
+  {home_team:"Алжир",away_team:"Австрия",match_time:"2026-06-28T02:00"}
+];
+
 // ── Флаги ──
 const CC = {
   'россия':'ru','германия':'de','франция':'fr','испания':'es','италия':'it','бразилия':'br',
@@ -396,7 +599,9 @@ const CC = {
   'словакия':'sk','словения':'si','болгария':'bg','финляндия':'fi','ирландия':'ie',
   'шотландия':'gb-sct','уэльс':'gb-wls','китай':'cn','индия':'in','венесуэла':'ve',
   'парагвай':'py','боливия':'bo','коста-рика':'cr','панама':'pa','гондурас':'hn',
-  // EN
+  'алжир':'dz','иордания':'jo','узбекистан':'uz','новая зеландия':'nz','гаити':'ht',
+  'кюрасао':'cw','кот-д\'ивуар':'ci','кабо-верде':'cv','юар':'za','южная африка':'za',
+  'босния и герцеговина':'ba','босния':'ba','др конго':'cd','конго':'cd',
   'russia':'ru','germany':'de','france':'fr','spain':'es','italy':'it','brazil':'br',
   'argentina':'ar','portugal':'pt','netherlands':'nl','england':'gb-eng','belgium':'be',
   'croatia':'hr','denmark':'dk','switzerland':'ch','poland':'pl','sweden':'se','norway':'no',
@@ -405,7 +610,9 @@ const CC = {
   'mexico':'mx','canada':'ca','japan':'jp','south korea':'kr','korea':'kr','australia':'au',
   'iran':'ir','saudi arabia':'sa','morocco':'ma','senegal':'sn','ghana':'gh','cameroon':'cm',
   'nigeria':'ng','egypt':'eg','tunisia':'tn','ecuador':'ec','uruguay':'uy','colombia':'co',
-  'chile':'cl','peru':'pe','qatar':'qa',
+  'chile':'cl','peru':'pe','qatar':'qa','algeria':'dz','jordan':'jo','uzbekistan':'uz',
+  'new zealand':'nz','haiti':'ht','curacao':'cw','cape verde':'cv','south africa':'za',
+  'bosnia':'ba','drc':'cd',
 };
 function flagUrl(name){
   if(!name)return null;
@@ -415,16 +622,16 @@ function flagUrl(name){
 }
 function teamHtml(name){
   const url=flagUrl(name);
-  const fl=url?`<img class="flag-img" src="${url}" alt="${name}" onerror="this.outerHTML='<span class=flag-fb>'+this.alt.slice(0,2).toUpperCase()+'</span>'">`:`<span class="flag-fb">${name.slice(0,2).toUpperCase()}</span>`;
+  const fl=url
+    ?`<img class="flag-img" src="${url}" alt="" onerror="this.outerHTML='<span class=flag-fb>'+this.alt.slice(0,2).toUpperCase()+'</span>'">`
+    :`<span class="flag-fb">${(name||'??').slice(0,2).toUpperCase()}</span>`;
   return `<div class="team-block">${fl}<span class="team-name">${name}</span></div>`;
 }
-const ballSvg=`<svg class="card-deco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="47" fill="none" stroke="white" stroke-width="2"/><polygon points="50,5 58,28 82,28 63,43 70,65 50,51 30,65 37,43 18,28 42,28" fill="white"/><circle cx="50" cy="50" r="13" fill="none" stroke="white" stroke-width="2"/></svg>`;
+const ballSvg=`<svg class="card-deco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="47" fill="none" stroke="#0a1628" stroke-width="2"/><polygon points="50,5 58,28 82,28 63,43 70,65 50,51 30,65 37,43 18,28 42,28" fill="#0a1628"/><circle cx="50" cy="50" r="13" fill="none" stroke="#0a1628" stroke-width="2"/></svg>`;
 
 // ── State ──
 let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false};
-
 function toast(msg,type='ok'){const e=document.getElementById('toast');e.textContent=msg;e.className=`toast show ${type}`;setTimeout(()=>e.classList.remove('show'),2800);}
-
 async function api(path,opts={}){
   const sep=path.includes('?')?'&':'?';
   const url=opts.noToken?path:`${path}${sep}token=${state.token}`;
@@ -432,15 +639,13 @@ async function api(path,opts={}){
   if(!res.ok){const e=await res.json().catch(()=>({detail:'Ошибка'}));throw new Error(e.detail||'Ошибка');}
   return res.json();
 }
-
 async function login(){
   const input=document.getElementById('token-input').value.trim();
   if(!input)return;
   const ac=await fetch('/api/admin/players',{headers:{'x-admin-token':input}});
   if(ac.ok){
     state.isAdmin=true;state.adminToken=input;
-    const pl=await ac.json();
-    if(pl.length)state.token=pl[0].token;
+    const pl=await ac.json();if(pl.length)state.token=pl[0].token;
     state.playerName='Админ';enterApp();return;
   }
   state.token=input;
@@ -451,11 +656,11 @@ function enterApp(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('user-name').textContent=state.playerName;
+  document.getElementById('user-name2').textContent=state.playerName;
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
   loadMatches();
 }
 function logout(){localStorage.removeItem('player_token');location.reload();}
-
 function showTab(name){
   const tabs=['matches','tournament','leaderboard','archive','rules','admin'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===name));
@@ -476,47 +681,43 @@ async function loadMatches(){
     el.innerHTML=matches.map(m=>renderMatch(m)).join('');
   }catch(e){toast(e.message,'err');}
 }
-
 function renderMatch(m){
   const dt=new Date(m.match_time);
-  const timeStr=dt.toLocaleString('ru',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  // Показываем время по Москве (UTC+3)
+  const msk=new Date(dt.getTime()+3*60*60*1000);
+  const timeStr=msk.toLocaleString('ru',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' МСК';
   let badge='';
   if(m.status==='upcoming')badge=`<span class="badge b-upcoming"><span class="dot"></span>Скоро</span>`;
   else if(m.status==='live')badge=`<span class="badge b-live"><span class="dot"></span>Идёт</span>`;
   else if(m.status==='grace')badge=`<span class="badge b-grace"><span class="dot"></span>Ещё 1 мин!</span>`;
   else badge=`<span class="badge b-finished">Завершён</span>`;
-
   const result=m.status==='finished'?`<div class="result-display">${m.home_score} : ${m.away_score}</div>`:'';
   const isVb=m.my_prediction?.is_vabank;
-  const vbClass=isVb?'vabank-card':'';
-
   let pred='';
   if(m.my_prediction){
     pred=`<div class="my-pred">${isVb?'<span class="vb-label">🔥 ВА-БАНК</span>':''} Мой прогноз: <strong>${m.my_prediction.home}:${m.my_prediction.away}</strong></div>`;
   } else if(m.status==='upcoming'||m.status==='grace'){
-    const vbDisabled=state.vabankUsed?'used':'';
-    const vbTitle=state.vabankUsed?'Ва-банк уже использован':'🔥 Ва-банк (×3 очки!)';
-    pred=`<div class="predict-area">
-      <div class="predict-label">Твой прогноз</div>
+    const vbDis=state.vabankUsed?'used':'';
+    pred=`<div class="predict-area" style="margin-top:4px">
+      <div class="predict-label">Твой прогноз на счёт</div>
       <div class="predict-row">
         <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="0">
         <span class="score-colon">:</span>
         <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="0">
-        <button class="btn btn-gold btn-sm" onclick="submitPred(${m.id},false)">Поставить</button>
-        <button class="btn btn-vabank btn-sm ${vbDisabled}" onclick="submitPred(${m.id},true)" ${state.vabankUsed?'disabled':''} title="${vbTitle}">🔥 Ва-банк</button>
+        <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},false)">Поставить</button>
+        <button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${state.vabankUsed?'disabled':''} title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>
       </div></div>`;
   } else if(m.status==='live'){
-    pred=`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'Oswald',sans-serif;letter-spacing:1px">🔒 СТАВКИ ЗАКРЫТЫ</div>`;
+    pred=`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:1px">🔒 СТАВКИ ЗАКРЫТЫ</div>`;
   }
-
   let predsSection='';
   if(m.status!=='upcoming'||m.my_prediction){
     predsSection=`<div class="preds-toggle">
       <button class="btn btn-ghost btn-sm" onclick="togglePreds(${m.id},this)">Прогнозы участников <span class="arrow" id="arrow-${m.id}">▾</span></button>
-      <div id="preds-list-${m.id}" style="display:none;margin-top:9px"></div>
+      <div id="preds-list-${m.id}" style="display:none;margin-top:8px"></div>
     </div>`;
   }
-  return `<div class="match-card card ${vbClass}" id="match-${m.id}">
+  return `<div class="match-card ${isVb?'vabank-card':''}" id="match-${m.id}">
     ${ballSvg}
     <div class="match-top">
       <div class="teams-row">${teamHtml(m.home_team)}<span class="vs">vs</span>${teamHtml(m.away_team)}</div>
@@ -525,34 +726,32 @@ function renderMatch(m){
     ${result}${pred}${predsSection}
   </div>`;
 }
-
 async function submitPred(matchId,isVabank){
   if(isVabank&&state.vabankUsed){toast('Ва-банк уже использован!','err');return;}
-  if(isVabank&&!confirm('🔥 Ты уверен? Ва-банк можно использовать только ОДИН РАЗ за весь турнир!\n\nТочный счёт = 9 очков\nИсход = 3 очка\nОшибка = 0 очков'))return;
+  if(isVabank&&!confirm('🔥 Использовать ВА-БАНК?\n\nМожно только ОДИН РАЗ за весь турнир!\n\nТочный счёт = 9 очков\nИсход = 3 очка\nОшибка = 0 очков'))return;
   const h=parseInt(document.getElementById(`h-${matchId}`).value);
   const a=parseInt(document.getElementById(`a-${matchId}`).value);
   if(isNaN(h)||isNaN(a)||h<0||a<0){toast('Введи счёт','err');return;}
   try{
     await api(`/api/predict/${matchId}`,{method:'POST',body:JSON.stringify({token:state.token,home_score:h,away_score:a,is_vabank:isVabank})});
-    if(isVabank){state.vabankUsed=true;toast('🔥 Ва-банк поставлен! Удачи!');}
+    if(isVabank){state.vabankUsed=true;toast('🔥 Ва-банк поставлен!');}
     else toast('Прогноз принят! 🎯');
     loadMatches();
   }catch(e){toast(e.message,'err');}
 }
-
 async function togglePreds(matchId,btn){
   const el=document.getElementById(`preds-list-${matchId}`);
   const arrow=document.getElementById(`arrow-${matchId}`);
   if(el.style.display!=='none'){el.style.display='none';arrow.classList.remove('open');return;}
   try{
     const data=await api(`/api/match/${matchId}/predictions`);
-    if(data.hidden){el.innerHTML=`<div style="font-size:13px;color:var(--muted);padding:7px 0">${data.reason}</div>`;}
+    if(data.hidden){el.innerHTML=`<div style="font-size:13px;color:var(--muted);padding:6px 0">${data.reason}</div>`;}
     else{
       el.innerHTML=data.predictions.map(p=>{
-        const vb=p.is_vabank?`<span class="vb-label" style="font-size:9px">ВА-БАНК</span>`:'';
+        const vb=p.is_vabank?`<span class="vb-label" style="font-size:9px">ВБ</span>`:'';
         const pts=data.match.status==='finished'?`<span class="pts-b pts-${p.points}">${p.points} очк.</span>`:'';
         return`<div class="pred-row"><span>${p.name} ${vb}</span><span class="pred-score">${p.home_score}:${p.away_score}</span>${pts}</div>`;
-      }).join('')||'<div style="color:var(--muted);font-size:13px;padding:7px 0">Нет прогнозов</div>';
+      }).join('')||'<div style="color:var(--muted);font-size:13px;padding:6px 0">Нет прогнозов</div>';
     }
     el.style.display='block';arrow.classList.add('open');
   }catch(e){toast(e.message,'err');}
@@ -564,37 +763,32 @@ async function loadTournament(){
     const data=await api('/api/tournament-prediction');
     const allData=await api('/api/tournament-predictions-all');
     const el=document.getElementById('tourn-content');
-    const my=data.my_prediction;
-    const res=data.result;
-
+    const my=data.my_prediction, res=data.result;
     let bonusHtml='';
     if(my&&res){
-      const champPts=my.champion_pts||0;
-      const finPts=my.finalist_pts||0;
-      const scorerPts=my.scorer_pts||0;
+      const total=(my.champion_pts||0)+(my.finalist_pts||0)+(my.scorer_pts||0);
       bonusHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        <span class="bonus-pill">Чемпион: ${champPts>0?`+${champPts}⭐`:'0'}</span>
-        <span class="bonus-pill">Финалисты: ${finPts>0?`+${finPts}⭐`:'0'}</span>
-        <span class="bonus-pill">Бомбардир: ${scorerPts>0?`+${scorerPts}⭐`:'0'}</span>
+        <span class="bonus-pill">Чемпион: ${my.champion_pts>0?`+${my.champion_pts}⭐`:'0'}</span>
+        <span class="bonus-pill">Финалисты: ${my.finalist_pts>0?`+${my.finalist_pts}⭐`:'0'}</span>
+        <span class="bonus-pill">Бомбардир: ${my.scorer_pts>0?`+${my.scorer_pts}⭐`:'0'}</span>
+        <span class="bonus-pill" style="background:#dcfce7;border-color:#86efac;color:var(--green)">Итого: +${total}⭐</span>
       </div>`;
     }
-
     let resHtml='';
     if(res){
-      resHtml=`<div style="background:rgba(201,168,76,0.07);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
-        <div style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">ИТОГИ ТУРНИРА (ОФИЦИАЛЬНЫЕ)</div>
-        <div style="font-size:14px;color:var(--text);line-height:2">
-          🏆 Чемпион: <strong>${res.champion||'—'}</strong><br>
-          🥈 Финалисты: <strong>${res.finalist1||'—'}</strong> и <strong>${res.finalist2||'—'}</strong><br>
-          ⚽ Бомбардир: <strong>${res.top_scorer||'—'}</strong>
+      resHtml=`<div style="background:var(--gold-light);border:2px solid rgba(184,134,11,0.2);border-radius:10px;padding:14px 18px;margin-bottom:14px">
+        <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:var(--gold);margin-bottom:8px">✅ ОФИЦИАЛЬНЫЕ ИТОГИ ТУРНИРА</div>
+        <div style="font-size:14px;color:var(--text2);line-height:2">
+          🏆 Чемпион: <strong style="color:var(--navy)">${res.champion||'—'}</strong><br>
+          🥈 Финалисты: <strong style="color:var(--navy)">${res.finalist1||'—'}</strong> и <strong style="color:var(--navy)">${res.finalist2||'—'}</strong><br>
+          ⚽ Бомбардир: <strong style="color:var(--navy)">${res.top_scorer||'—'}</strong>
         </div>
       </div>`;
     }
-
     el.innerHTML=`
       ${resHtml}
-      <div class="tourn-card card">
-        <div class="tourn-head">🌍 Мой прогноз на турнир</div>
+      <div class="tourn-card">
+        <div class="tourn-head">📝 Мой прогноз на турнир</div>
         <div class="tourn-grid">
           <div class="tourn-field"><label>🏆 Чемпион (+10 очков)</label><input id="tc-champ" value="${my?.champion||''}" placeholder="Название сборной"></div>
           <div class="tourn-field"><label>⚽ Лучший бомбардир (+10 очков)</label><input id="tc-scorer" value="${my?.top_scorer||''}" placeholder="Имя игрока"></div>
@@ -602,19 +796,19 @@ async function loadTournament(){
           <div class="tourn-field"><label>🥈 Финалист 2 (+5 очков)</label><input id="tc-fin2" value="${my?.finalist2||''}" placeholder="Название сборной"></div>
         </div>
         ${bonusHtml}
-        <button class="btn btn-gold btn-full" style="margin-top:14px" onclick="saveTournamentPred()">Сохранить прогноз</button>
+        <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="saveTournamentPred()">💾 Сохранить прогноз</button>
       </div>
-      <div class="tourn-card card" style="margin-top:14px">
-        <div class="tourn-head">📊 Прогнозы участников</div>
+      <div class="tourn-card">
+        <div class="tourn-head">📊 Прогнозы всех участников</div>
         ${allData.predictions.length?`
         <table class="adm-table">
           <thead><tr><th>Участник</th><th>Чемпион</th><th>Финалисты</th><th>Бомбардир</th>${res?'<th>Бонус</th>':''}</tr></thead>
           <tbody>${allData.predictions.map(p=>`
             <tr>
               <td><strong>${p.name}</strong></td>
-              <td>${teamHtml(p.champion||'—')}</td>
-              <td style="font-size:12px">${p.finalist1||'—'} / ${p.finalist2||'—'}</td>
-              <td>${p.top_scorer||'—'}</td>
+              <td style="font-size:13px">${teamHtml(p.champion||'—')}</td>
+              <td style="font-size:12px;color:var(--text2)">${p.finalist1||'—'} / ${p.finalist2||'—'}</td>
+              <td style="font-size:13px">${p.top_scorer||'—'}</td>
               ${res?`<td><span class="bonus-pill">+${(p.champion_pts||0)+(p.finalist_pts||0)+(p.scorer_pts||0)}</span></td>`:''}
             </tr>`).join('')}
           </tbody>
@@ -622,15 +816,8 @@ async function loadTournament(){
       </div>`;
   }catch(e){toast(e.message,'err');}
 }
-
 async function saveTournamentPred(){
-  const body={
-    token:state.token,
-    champion:document.getElementById('tc-champ').value.trim(),
-    finalist1:document.getElementById('tc-fin1').value.trim(),
-    finalist2:document.getElementById('tc-fin2').value.trim(),
-    top_scorer:document.getElementById('tc-scorer').value.trim()
-  };
+  const body={token:state.token,champion:document.getElementById('tc-champ').value.trim(),finalist1:document.getElementById('tc-fin1').value.trim(),finalist2:document.getElementById('tc-fin2').value.trim(),top_scorer:document.getElementById('tc-scorer').value.trim()};
   try{await api('/api/tournament-prediction',{method:'POST',body:JSON.stringify(body)});toast('Прогноз сохранён! 🏆');loadTournament();}
   catch(e){toast(e.message,'err');}
 }
@@ -639,10 +826,9 @@ async function saveTournamentPred(){
 async function loadLeaderboard(){
   try{
     const rows=await api('/api/leaderboard');
-    const medals=['🥇','🥈','🥉'];
-    const rc=['r1','r2','r3'];
+    const medals=['🥇','🥈','🥉'];const rc=['r1','r2','r3'];
     document.getElementById('lb-content').innerHTML=`
-      <div class="lb-wrap card">
+      <div class="lb-wrap">
         <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center">🎯</div><div style="text-align:center">✅</div><div style="text-align:center">%</div><div style="text-align:center">Бонус</div></div>
         ${rows.map((r,i)=>`<div class="lb-row">
           <div class="lb-rank ${rc[i]||''}">${medals[i]||i+1}</div>
@@ -664,21 +850,18 @@ async function loadArchive(){
     const el=document.getElementById('archive-content');
     if(!matches.length){el.innerHTML='<div class="empty"><div class="ico">📂</div>Завершённых матчей пока нет</div>';return;}
     el.innerHTML=matches.map(m=>{
-      const dt=new Date(m.match_time).toLocaleString('ru',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
+      const msk=new Date(new Date(m.match_time).getTime()+3*60*60*1000);
+      const dt=msk.toLocaleString('ru',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' МСК';
       const predsHtml=m.predictions.map(p=>{
         const vb=p.is_vabank?`<span class="vb-label" style="font-size:9px">ВБ</span>`:'';
-        return`<div class="pred-row">
-          <span>${p.name} ${vb}</span>
-          <span class="pred-score">${p.home_score}:${p.away_score}</span>
-          <span class="pts-b pts-${p.points}">${p.points} очк.</span>
-        </div>`;
-      }).join('')||'<div style="color:var(--muted);font-size:13px">Нет прогнозов</div>';
-      return`<div class="arch-match card">
+        return`<div class="pred-row"><span>${p.name} ${vb}</span><span class="pred-score">${p.home_score}:${p.away_score}</span><span class="pts-b pts-${p.points}">${p.points} очк.</span></div>`;
+      }).join('')||'<div style="color:var(--muted);font-size:13px;padding:8px 0">Нет прогнозов</div>';
+      return`<div class="arch-match">
         <div class="arch-header" onclick="toggleArchive(this)">
           <div class="teams-row">${teamHtml(m.home_team)}<span class="vs">vs</span>${teamHtml(m.away_team)}</div>
           <div style="display:flex;align-items:center;gap:12px">
             <span class="arch-score">${m.home_score}:${m.away_score}</span>
-            <span style="color:var(--muted);font-size:11px;font-family:'Oswald',sans-serif">${dt}</span>
+            <span style="color:var(--muted);font-size:11px">${dt}</span>
             <span class="arrow">▾</span>
           </div>
         </div>
@@ -688,15 +871,37 @@ async function loadArchive(){
   }catch(e){toast(e.message,'err');}
 }
 function toggleArchive(header){
-  const preds=header.nextElementSibling;
-  const arrow=header.querySelector('.arrow');
+  const preds=header.nextElementSibling;const arrow=header.querySelector('.arrow');
   const open=preds.style.display!=='none';
-  preds.style.display=open?'none':'block';
-  arrow.classList.toggle('open',!open);
+  preds.style.display=open?'none':'block';arrow.classList.toggle('open',!open);
 }
 
 // ── ADMIN ──
-async function loadAdmin(){await loadPlayersTable();await loadAdminMatches();}
+async function loadAdmin(){
+  // Показать баннер импорта если матчей нет
+  try{
+    const matches=await fetch('/api/admin/matches',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
+    const banner=document.getElementById('import-banner-wrap');
+    if(matches.length===0){
+      banner.innerHTML=`<div class="import-banner">
+        <div class="ib-icon">📅</div>
+        <div class="ib-text"><strong>Загрузить все 72 матча ЧМ 2026 одним нажатием!</strong><br>Весь групповой этап уже вшит в сайт с правильным временем по МСК.</div>
+        <div class="ib-action"><button class="btn btn-gold" onclick="importAllMatches()">⚡ Импортировать</button></div>
+      </div>`;
+    } else {
+      banner.innerHTML='';
+    }
+  }catch(e){}
+  await loadPlayersTable();
+  await loadAdminMatches();
+}
+
+async function importAllMatches(){
+  if(!confirm(`Загрузить все 72 матча группового этапа ЧМ 2026?\n\nВремя будет в UTC (на сайте отображается по Москве +3ч)`))return;
+  const res=await fetch('/api/admin/matches/batch',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({matches:WC2026_MATCHES})});
+  if(res.ok){const d=await res.json();toast(`✅ Загружено ${d.added} матчей!`,'ok');loadAdmin();loadMatches();}
+  else toast('Ошибка импорта','err');
+}
 
 async function loadPlayersTable(){
   const players=await fetch('/api/admin/players',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
@@ -710,98 +915,69 @@ async function loadPlayersTable(){
     </tr>`).join('');
 }
 function copyLink(url){navigator.clipboard.writeText(url);toast('Скопировано!','info');}
-
 async function addPlayer(){
-  const name=document.getElementById('p-name').value.trim();
-  if(!name)return;
+  const name=document.getElementById('p-name').value.trim();if(!name)return;
   const res=await fetch('/api/admin/players',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({name})});
-  if(res.ok){
-    const data=await res.json();
-    document.getElementById('p-name').value='';
-    toast(`${name} добавлен!`);
-    await loadPlayersTable();
-    const link=`${location.origin}?token=${data.token}`;
-    if(confirm(`Скопировать ссылку для ${name}?`)){navigator.clipboard.writeText(link);toast('Скопировано!','info');}
-  }else{const e=await res.json();toast(e.detail||'Ошибка','err');}
+  if(res.ok){const data=await res.json();document.getElementById('p-name').value='';toast(`${name} добавлен!`);await loadPlayersTable();const link=`${location.origin}?token=${data.token}`;if(confirm(`Скопировать ссылку для ${name}?`)){navigator.clipboard.writeText(link);toast('Скопировано!','info');}}
+  else{const e=await res.json();toast(e.detail||'Ошибка','err');}
 }
-
 async function addMatch(){
-  const home=document.getElementById('m-home').value.trim();
-  const away=document.getElementById('m-away').value.trim();
-  const time=document.getElementById('m-time').value;
+  const home=document.getElementById('m-home').value.trim(),away=document.getElementById('m-away').value.trim(),time=document.getElementById('m-time').value;
   if(!home||!away||!time){toast('Заполни все поля','err');return;}
-  // Конвертируем MSK (UTC+3) → UTC
-  const mskDate=new Date(time);
-  const utcTime=new Date(mskDate.getTime()-3*60*60*1000).toISOString().slice(0,16);
+  const utcTime=new Date(new Date(time).getTime()-3*60*60*1000).toISOString().slice(0,16);
   const res=await fetch('/api/admin/matches',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:utcTime})});
   if(res.ok){document.getElementById('m-home').value=document.getElementById('m-away').value=document.getElementById('m-time').value='';toast('Матч добавлен!');loadAdminMatches();loadMatches();}
   else toast('Ошибка','err');
 }
-
 async function addBatch(){
-  const raw=document.getElementById('batch-input').value.trim();
-  if(!raw){toast('Вставь матчи','err');return;}
+  const raw=document.getElementById('batch-input').value.trim();if(!raw){toast('Вставь матчи','err');return;}
   const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
   const matches=[];
   for(const line of lines){
-    // Формат: Команда1 — Команда2 — 2026-06-11T21:00
     const parts=line.split(/\s*[—\-–]\s*/);
-    if(parts.length<3){toast(`Ошибка строки: ${line}`,'err');return;}
-    const home=parts[0].trim(), away=parts[1].trim(), time=parts[2].trim();
-    // MSK → UTC
-    const mskDate=new Date(time);
-    const utcTime=new Date(mskDate.getTime()-3*60*60*1000).toISOString().slice(0,16);
+    if(parts.length<3){toast(`Ошибка: ${line}`,'err');return;}
+    const home=parts[0].trim(),away=parts[1].trim(),time=parts[2].trim();
+    const utcTime=new Date(new Date(time).getTime()-3*60*60*1000).toISOString().slice(0,16);
     matches.push({home_team:home,away_team:away,match_time:utcTime});
   }
   const res=await fetch('/api/admin/matches/batch',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({matches})});
-  if(res.ok){const d=await res.json();document.getElementById('batch-input').value='';toast(`Добавлено матчей: ${d.added} ✅`);loadAdminMatches();loadMatches();}
+  if(res.ok){const d=await res.json();document.getElementById('batch-input').value='';toast(`Добавлено: ${d.added} матчей ✅`);loadAdminMatches();loadMatches();}
   else toast('Ошибка','err');
 }
-
 async function setTournamentResult(){
-  const body={
-    champion:document.getElementById('tr-champion').value.trim(),
-    finalist1:document.getElementById('tr-fin1').value.trim(),
-    finalist2:document.getElementById('tr-fin2').value.trim(),
-    top_scorer:document.getElementById('tr-scorer').value.trim()
-  };
+  const body={champion:document.getElementById('tr-champion').value.trim(),finalist1:document.getElementById('tr-fin1').value.trim(),finalist2:document.getElementById('tr-fin2').value.trim(),top_scorer:document.getElementById('tr-scorer').value.trim()};
   if(!body.champion){toast('Введи чемпиона','err');return;}
   const res=await fetch('/api/admin/tournament-result',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify(body)});
-  if(res.ok){toast('Итоги сохранены! Бонусы начислены 🏆');loadAdmin();}
-  else toast('Ошибка','err');
+  if(res.ok)toast('Итоги сохранены! Бонусы начислены 🏆');else toast('Ошибка','err');
+  loadAdmin();
 }
-
 async function loadAdminMatches(){
   const matches=await fetch('/api/admin/matches',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
   const el=document.getElementById('admin-matches-list');
-  if(!matches.length){el.innerHTML='<div class="empty"><div class="ico">📅</div>Матчей нет</div>';return;}
-  const stLabels={upcoming:'⏳ Скоро',live:'🔴 Идёт',grace:'⚡ Грейс',finished:'✅ Завершён'};
+  if(!matches.length){el.innerHTML='<div class="empty" style="padding:24px"><div class="ico">📅</div>Матчей нет</div>';return;}
+  const stL={upcoming:'⏳ Скоро',live:'🔴 Идёт',grace:'⚡ Грейс',finished:'✅ Завершён'};
   el.innerHTML=matches.map(m=>{
-    const dt=new Date(m.match_time).toLocaleString('ru');
+    const msk=new Date(new Date(m.match_time).getTime()+3*60*60*1000);
+    const dt=msk.toLocaleString('ru',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' МСК';
     const pi=m.predictions.length?m.predictions.map(p=>`${p.name}:${p.home_score}:${p.away_score}`).join(' · '):'нет';
-    return`<div class="card" style="padding:16px 18px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">${teamHtml(m.home_team)}<span style="color:var(--muted);font-family:'Oswald'">vs</span>${teamHtml(m.away_team)}</div>
-          <div style="font-size:11px;color:var(--muted)">${dt} · ${stLabels[m.status]||m.status}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">Прогнозы: ${pi}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          ${m.status==='upcoming'?`<span style="font-size:10px;color:var(--muted);font-family:'Oswald';letter-spacing:1px">⏳ АВТО</span>`:''}
-          ${m.status==='live'||m.status==='grace'?`<button class="btn btn-gold btn-sm" onclick="promptResult(${m.id})">Ввести счёт</button>`:''}
-          ${m.status==='finished'?`<span style="color:var(--green);font-family:'Oswald';font-size:18px">${m.home_score}:${m.away_score}</span>`:''}
-          <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})">✕</button>
-        </div>
+    return`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+      <div>
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">${teamHtml(m.home_team)}<span style="color:var(--muted);font-weight:700">vs</span>${teamHtml(m.away_team)}</div>
+        <div style="font-size:11px;color:var(--muted)">${dt} · ${stL[m.status]||m.status}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Прогнозы: ${pi}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+        ${m.status==='upcoming'?`<span style="font-size:10px;color:var(--muted);font-weight:700">⏳ АВТО</span>`:''}
+        ${m.status==='live'||m.status==='grace'?`<button class="btn btn-gold btn-sm" onclick="promptResult(${m.id})">Счёт</button>`:''}
+        ${m.status==='finished'?`<span style="color:var(--green);font-family:'Oswald';font-size:18px;font-weight:700">${m.home_score}:${m.away_score}</span>`:''}
+        <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})">✕</button>
       </div>
     </div>`;
   }).join('');
 }
-
 async function promptResult(id){
-  const score=prompt('Счёт матча (например: 2:1)');
-  if(!score)return;
-  const [h,a]=score.split(':').map(Number);
-  if(isNaN(h)||isNaN(a)){toast('Неверный формат','err');return;}
+  const score=prompt('Счёт матча (например: 2:1)');if(!score)return;
+  const [h,a]=score.split(':').map(Number);if(isNaN(h)||isNaN(a)){toast('Неверный формат','err');return;}
   await fetch(`/api/admin/matches/${id}/result`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({home_score:h,away_score:a})});
   toast('Результат сохранён ✅');loadAdminMatches();loadMatches();
 }
