@@ -180,6 +180,19 @@ async def grace_period_end(match_id: int):
         if m and m["status"] == "grace":
             db.execute("UPDATE matches SET status='live' WHERE id=?", (match_id,))
     await broadcast_predictions(match_id)
+    # Запускаем авто-финиш через 120 минут после старта
+    asyncio.create_task(auto_finish_match(match_id))
+
+MATCH_DURATION_SECONDS = 120 * 60  # 120 минут
+
+async def auto_finish_match(match_id: int):
+    """Через 120 минут после старта переводим матч в статус ended."""
+    await asyncio.sleep(MATCH_DURATION_SECONDS - GRACE_SECONDS)
+    with get_db() as db:
+        m = db.execute("SELECT status FROM matches WHERE id=?", (match_id,)).fetchone()
+        if m and m["status"] == "live":
+            db.execute("UPDATE matches SET status='ended' WHERE id=?", (match_id,))
+            print(f"Auto-ended match {match_id}")
 
 def calc_points(ph, pa, rh, ra, is_vabank=False):
     if ph == rh and pa == ra:
@@ -228,7 +241,7 @@ async def predict(match_id: int, body: PredictionIn):
         if not match:
             raise HTTPException(404, "Матч не найден")
         if match["status"] not in ("upcoming", "grace"):
-            raise HTTPException(400, "Приём ставок закрыт")
+            raise HTTPException(400, "Приём ставок закрыт")  # live, ended, finished
         existing = db.execute("SELECT id, is_vabank FROM predictions WHERE player_id=? AND match_id=?",
                       (player["id"], match_id)).fetchone()
         # В грейс-период менять нельзя — матч уже начался
@@ -269,6 +282,7 @@ def match_predictions(match_id: int, token: str):
         # Скрываем прогнозы пока матч не начался (статус upcoming)
         if match["status"] == "upcoming":
             return {"hidden": True, "reason": f"Прогнозы скрыты до начала матча • {done}/{total} сделали ставку"}
+        # Для ended тоже показываем прогнозы (матч завершён, ждём счёт)
         preds = db.execute("""
             SELECT pl.name, p.home_score, p.away_score, p.points, p.is_vabank
             FROM predictions p JOIN players pl ON p.player_id=pl.id
@@ -460,6 +474,14 @@ def set_result(match_id: int, body: ResultIn):
         for p in preds:
             pts = calc_points(p["home_score"], p["away_score"], body.home_score, body.away_score, bool(p["is_vabank"]))
             db.execute("UPDATE predictions SET points=? WHERE id=?", (pts, p["id"]))
+    return {"ok": True}
+
+@app.put("/api/admin/matches/{match_id}/status", dependencies=[Depends(require_admin)])
+def update_match_status(match_id: int, status: str):
+    if status not in ("upcoming", "live", "grace", "ended", "finished"):
+        raise HTTPException(400, "Invalid status")
+    with get_db() as db:
+        db.execute("UPDATE matches SET status=? WHERE id=?", (status, match_id))
     return {"ok": True}
 
 @app.get("/api/admin/matches", dependencies=[Depends(require_admin)])
