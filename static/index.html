@@ -682,10 +682,12 @@ async function loadMatches(){
   }catch(e){toast(e.message,'err');}
 }
 function renderMatch(m){
-  const dt=new Date(m.match_time);
-  // Показываем время по Москве (UTC+3)
-  const msk=new Date(dt.getTime()+3*60*60*1000);
-  const timeStr=msk.toLocaleString('ru',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' МСК';
+  // Время хранится как московское, просто парсим строку напрямую
+  const mt=m.match_time; // формат "2026-06-04T14:59"
+  const parts=mt.split(/[T:\-]/);
+  const y=parts[0],mo=parseInt(parts[1]),d=parseInt(parts[2]),h=parts[3],mi=parts[4];
+  const months=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  const timeStr=`${d} ${months[mo]}., ${h}:${mi} МСК`;
   let badge='';
   if(m.status==='upcoming')badge=`<span class="badge b-upcoming"><span class="dot"></span>Скоро</span>`;
   else if(m.status==='live')badge=`<span class="badge b-live"><span class="dot"></span>Идёт</span>`;
@@ -694,19 +696,40 @@ function renderMatch(m){
   const result=m.status==='finished'?`<div class="result-display">${m.home_score} : ${m.away_score}</div>`:'';
   const isVb=m.my_prediction?.is_vabank;
   let pred='';
-  if(m.my_prediction){
+  if(m.my_prediction && m.status!=='upcoming'){
+    // Матч начался — показываем прогноз, менять нельзя
     pred=`<div class="my-pred">${isVb?'<span class="vb-label">🔥 ВА-БАНК</span>':''} Мой прогноз: <strong>${m.my_prediction.home_score}:${m.my_prediction.away_score}</strong></div>`;
-  } else if(m.status==='upcoming'||m.status==='grace'){
-    const vbDis=state.vabankUsed?'used':'';
+  } else if(m.status==='upcoming'){
+    // До начала — всегда показываем форму (и для новых и для изменения)
+    const hasExisting=!!m.my_prediction;
+    const vbDis=(state.vabankUsed&&!m.my_prediction?.is_vabank)?'used':'';
+    const vbUsedOnThis=m.my_prediction?.is_vabank;
+    const hVal=m.my_prediction?m.my_prediction.home_score:0;
+    const aVal=m.my_prediction?m.my_prediction.away_score:0;
     pred=`<div class="predict-area" style="margin-top:4px">
-      <div class="predict-label">Твой прогноз на счёт</div>
+      <div class="predict-label">${hasExisting?'✏️ Изменить прогноз (до старта матча)':'Твой прогноз на счёт'}</div>
       <div class="predict-row">
-        <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="0">
+        <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}">
         <span class="score-colon">:</span>
-        <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="0">
-        <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},false)">Поставить</button>
-        <button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${state.vabankUsed?'disabled':''} title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>
+        <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}">
+        <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThis?'true':'false'})">${hasExisting?'Изменить':'Поставить'}</button>
+        ${!vbUsedOnThis?`<button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${(state.vabankUsed&&!vbUsedOnThis)?'disabled':''} title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:''}
       </div></div>`;
+  } else if(m.status==='grace'){
+    if(m.my_prediction){
+      pred=`<div class="my-pred">${isVb?'<span class="vb-label">🔥 ВА-БАНК</span>':''} Мой прогноз: <strong>${m.my_prediction.home_score}:${m.my_prediction.away_score}</strong></div>`;
+    } else {
+      const vbDis=state.vabankUsed?'used':'';
+      pred=`<div class="predict-area" style="margin-top:4px">
+        <div class="predict-label" style="color:var(--green)">⚡ Последний шанс поставить!</div>
+        <div class="predict-row">
+          <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="0">
+          <span class="score-colon">:</span>
+          <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="0">
+          <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},false)">Поставить</button>
+          <button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${state.vabankUsed?'disabled':''}>🔥 Ва-банк</button>
+        </div></div>`;
+    }
   } else if(m.status==='live'){
     pred=`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:1px">🔒 СТАВКИ ЗАКРЫТЫ</div>`;
   }
@@ -735,7 +758,7 @@ async function submitPred(matchId,isVabank){
   try{
     await api(`/api/predict/${matchId}`,{method:'POST',body:JSON.stringify({token:state.token,home_score:h,away_score:a,is_vabank:isVabank})});
     if(isVabank){state.vabankUsed=true;toast('🔥 Ва-банк поставлен!');}
-    else toast('Прогноз принят! 🎯');
+    else toast('Прогноз сохранён! 🎯');
     loadMatches();
   }catch(e){toast(e.message,'err');}
 }
@@ -764,56 +787,88 @@ async function loadTournament(){
     const allData=await api('/api/tournament-predictions-all');
     const el=document.getElementById('tourn-content');
     const my=data.my_prediction, res=data.result;
+    const started=allData.tournament_started;
+    const doneCount=allData.done_count||0, totalCount=allData.total_count||0;
+
     let bonusHtml='';
     if(my&&res){
-      const total=(my.champion_pts||0)+(my.finalist_pts||0)+(my.scorer_pts||0);
+      const tot=(my.champion_pts||0)+(my.finalist_pts||0)+(my.scorer_pts||0);
       bonusHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <span class="bonus-pill">Чемпион: ${my.champion_pts>0?`+${my.champion_pts}⭐`:'0'}</span>
         <span class="bonus-pill">Финалисты: ${my.finalist_pts>0?`+${my.finalist_pts}⭐`:'0'}</span>
         <span class="bonus-pill">Бомбардир: ${my.scorer_pts>0?`+${my.scorer_pts}⭐`:'0'}</span>
-        <span class="bonus-pill" style="background:#dcfce7;border-color:#86efac;color:var(--green)">Итого: +${total}⭐</span>
+        <span class="bonus-pill" style="background:#dcfce7;border-color:#86efac;color:var(--green)">Итого: +${tot}⭐</span>
       </div>`;
     }
+
     let resHtml='';
     if(res){
       resHtml=`<div style="background:var(--gold-light);border:2px solid rgba(184,134,11,0.2);border-radius:10px;padding:14px 18px;margin-bottom:14px">
         <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:2px;color:var(--gold);margin-bottom:8px">✅ ОФИЦИАЛЬНЫЕ ИТОГИ ТУРНИРА</div>
         <div style="font-size:14px;color:var(--text2);line-height:2">
-          🏆 Чемпион: <strong style="color:var(--navy)">${res.champion||'—'}</strong><br>
-          🥈 Финалисты: <strong style="color:var(--navy)">${res.finalist1||'—'}</strong> и <strong style="color:var(--navy)">${res.finalist2||'—'}</strong><br>
-          ⚽ Бомбардир: <strong style="color:var(--navy)">${res.top_scorer||'—'}</strong>
+          🏆 Чемпион: <strong>${res.champion||'—'}</strong><br>
+          🥈 Финалисты: <strong>${res.finalist1||'—'}</strong> и <strong>${res.finalist2||'—'}</strong><br>
+          ⚽ Бомбардир: <strong>${res.top_scorer||'—'}</strong>
         </div>
       </div>`;
     }
-    el.innerHTML=`
-      ${resHtml}
-      <div class="tourn-card">
-        <div class="tourn-head">📝 Мой прогноз на турнир</div>
-        <div class="tourn-grid">
-          <div class="tourn-field"><label>🏆 Чемпион (+10 очков)</label><input id="tc-champ" value="${my?.champion||''}" placeholder="Название сборной"></div>
-          <div class="tourn-field"><label>⚽ Лучший бомбардир (+10 очков)</label><input id="tc-scorer" value="${my?.top_scorer||''}" placeholder="Имя игрока"></div>
-          <div class="tourn-field"><label>🥈 Финалист 1 (+5 очков)</label><input id="tc-fin1" value="${my?.finalist1||''}" placeholder="Название сборной"></div>
-          <div class="tourn-field"><label>🥈 Финалист 2 (+5 очков)</label><input id="tc-fin2" value="${my?.finalist2||''}" placeholder="Название сборной"></div>
-        </div>
-        ${bonusHtml}
-        <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="saveTournamentPred()">💾 Сохранить прогноз</button>
-      </div>
-      <div class="tourn-card">
-        <div class="tourn-head">📊 Прогнозы всех участников</div>
-        ${allData.predictions.length?`
-        <table class="adm-table">
-          <thead><tr><th>Участник</th><th>Чемпион</th><th>Финалисты</th><th>Бомбардир</th>${res?'<th>Бонус</th>':''}</tr></thead>
-          <tbody>${allData.predictions.map(p=>`
-            <tr>
-              <td><strong>${p.name}</strong></td>
-              <td style="font-size:13px">${teamHtml(p.champion||'—')}</td>
-              <td style="font-size:12px;color:var(--text2)">${p.finalist1||'—'} / ${p.finalist2||'—'}</td>
-              <td style="font-size:13px">${p.top_scorer||'—'}</td>
-              ${res?`<td><span class="bonus-pill">+${(p.champion_pts||0)+(p.finalist_pts||0)+(p.scorer_pts||0)}</span></td>`:''}
-            </tr>`).join('')}
-          </tbody>
-        </table>`:'<div class="empty" style="padding:24px"><div class="ico">🌍</div>Никто ещё не заполнил прогноз</div>'}
-      </div>`;
+
+    const deadlineBanner = started
+      ? `<div style="background:#fef2f2;border:2px solid rgba(220,38,38,0.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--red)">
+           🔒 <strong>Турнир начался!</strong> Приём прогнозов на победителей закрыт. Прогнозы всех участников открыты ниже.
+         </div>`
+      : `<div style="background:#f0fdf4;border:2px solid rgba(22,163,74,0.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--green)">
+           ✅ <strong>Прогнозы принимаются до начала первого матча турнира.</strong> После старта ЧМ изменить прогноз будет нельзя, и все прогнозы станут видны участникам.<br>
+           <span style="color:var(--muted);margin-top:4px;display:block">Сделали прогноз: <strong style="color:var(--navy)">${doneCount}/${totalCount}</strong></span>
+         </div>`;
+
+    const formHtml = !started
+      ? `<div class="tourn-card">
+           <div class="tourn-head">📝 Мой прогноз на турнир</div>
+           <div class="tourn-grid">
+             <div class="tourn-field"><label>🏆 Чемпион (+10 очков)</label><input id="tc-champ" value="${my?.champion||''}" placeholder="Название сборной"></div>
+             <div class="tourn-field"><label>⚽ Лучший бомбардир (+10 очков)</label><input id="tc-scorer" value="${my?.top_scorer||''}" placeholder="Имя игрока"></div>
+             <div class="tourn-field"><label>🥈 Финалист 1 (+5 очков)</label><input id="tc-fin1" value="${my?.finalist1||''}" placeholder="Название сборной"></div>
+             <div class="tourn-field"><label>🥈 Финалист 2 (+5 очков)</label><input id="tc-fin2" value="${my?.finalist2||''}" placeholder="Название сборной"></div>
+           </div>
+           ${bonusHtml}
+           <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="saveTournamentPred()">💾 Сохранить прогноз</button>
+         </div>`
+      : my
+        ? `<div class="tourn-card">
+             <div class="tourn-head">📝 Мой прогноз</div>
+             <div style="font-size:14px;color:var(--text2);line-height:2.2">
+               🏆 Чемпион: <strong>${my.champion||'—'}</strong><br>
+               🥈 Финалист 1: <strong>${my.finalist1||'—'}</strong><br>
+               🥈 Финалист 2: <strong>${my.finalist2||'—'}</strong><br>
+               ⚽ Бомбардир: <strong>${my.top_scorer||'—'}</strong>
+             </div>
+             ${bonusHtml}
+           </div>`
+        : `<div class="tourn-card"><div style="color:var(--muted);text-align:center;padding:20px">😔 Ты не сделал прогноз до старта турнира</div></div>`;
+
+    const tableHtml = started
+      ? `<div class="tourn-card">
+           <div class="tourn-head">📊 Прогнозы всех участников</div>
+           ${allData.predictions.length ? `
+           <table class="adm-table">
+             <thead><tr><th>Участник</th><th>Чемпион</th><th>Финалисты</th><th>Бомбардир</th>${res?'<th>Бонус</th>':''}</tr></thead>
+             <tbody>${allData.predictions.map(p=>`
+               <tr>
+                 <td><strong>${p.name}</strong></td>
+                 <td style="font-size:13px">${teamHtml(p.champion||'—')}</td>
+                 <td style="font-size:12px;color:var(--text2)">${p.finalist1||'—'} / ${p.finalist2||'—'}</td>
+                 <td style="font-size:13px">${p.top_scorer||'—'}</td>
+                 ${res?`<td><span class="bonus-pill">+${(p.champion_pts||0)+(p.finalist_pts||0)+(p.scorer_pts||0)}</span></td>`:''}
+               </tr>`).join('')}
+             </tbody>
+           </table>` : '<div class="empty" style="padding:24px"><div class="ico">🌍</div>Никто не сделал прогноз</div>'}
+         </div>`
+      : `<div class="tourn-card" style="text-align:center;padding:24px;color:var(--muted)">
+           🔒 Прогнозы других участников будут видны после начала первого матча турнира
+         </div>`;
+
+    el.innerHTML = resHtml + deadlineBanner + formHtml + tableHtml;
   }catch(e){toast(e.message,'err');}
 }
 async function saveTournamentPred(){
@@ -850,8 +905,9 @@ async function loadArchive(){
     const el=document.getElementById('archive-content');
     if(!matches.length){el.innerHTML='<div class="empty"><div class="ico">📂</div>Завершённых матчей пока нет</div>';return;}
     el.innerHTML=matches.map(m=>{
-      const msk=new Date(new Date(m.match_time).getTime()+3*60*60*1000);
-      const dt=msk.toLocaleString('ru',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' МСК';
+      const atp=m.match_time.split(/[T:\-]/);
+      const longMonths=['','января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+      const dt=`${parseInt(atp[2])} ${longMonths[parseInt(atp[1])]}, ${atp[3]}:${atp[4]} МСК`;
       const predsHtml=m.predictions.map(p=>{
         const vb=p.is_vabank?`<span class="vb-label" style="font-size:9px">ВБ</span>`:'';
         return`<div class="pred-row"><span>${p.name} ${vb}</span><span class="pred-score">${p.home_score}:${p.away_score}</span><span class="pts-b pts-${p.points}">${p.points} очк.</span></div>`;
@@ -924,9 +980,8 @@ async function addPlayer(){
 async function addMatch(){
   const home=document.getElementById("m-home").value.trim(),away=document.getElementById("m-away").value.trim(),time=document.getElementById("m-time").value;
   if(!home||!away||!time){toast("Заполни все поля","err");return;}
-  const [dp,tp]=time.split("T");const [y,mo,d]=dp.split("-").map(Number);const [h,mi]=(tp||"00:00").split(":").map(Number);
-  const utcTime=new Date(Date.UTC(y,mo-1,d,h,mi)-3*60*60*1000).toISOString().slice(0,16);
-  const res=await fetch("/api/admin/matches",{method:"POST",headers:{"Content-Type":"application/json","x-admin-token":state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:utcTime})});
+  // Передаём время как есть (МСК), без конвертации
+  const res=await fetch("/api/admin/matches",{method:"POST",headers:{"Content-Type":"application/json","x-admin-token":state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:time})});
   if(res.ok){document.getElementById("m-home").value=document.getElementById("m-away").value=document.getElementById("m-time").value="";toast("Матч добавлен!");loadAdminMatches();loadMatches();}
   else toast("Ошибка","err");
 }
@@ -938,8 +993,8 @@ async function addBatch(){
     const parts=line.split(/\s*[—\-–]\s*/);
     if(parts.length<3){toast(`Ошибка: ${line}`,'err');return;}
     const home=parts[0].trim(),away=parts[1].trim(),time=parts[2].trim();
-    const [dp2,tp2]=time.split("T");const [y2,mo2,d2]=dp2.split("-").map(Number);const [h2,mi2]=(tp2||"00:00").split(":").map(Number);const utcTime=new Date(Date.UTC(y2,mo2-1,d2,h2,mi2)-3*60*60*1000).toISOString().slice(0,16);
-    matches.push({home_team:home,away_team:away,match_time:utcTime});
+    // Время в батче уже в МСК формате, передаём как есть
+    matches.push({home_team:home,away_team:away,match_time:time});
   }
   const res=await fetch('/api/admin/matches/batch',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({matches})});
   if(res.ok){const d=await res.json();document.getElementById('batch-input').value='';toast(`Добавлено: ${d.added} матчей ✅`);loadAdminMatches();loadMatches();}
@@ -958,8 +1013,9 @@ async function loadAdminMatches(){
   if(!matches.length){el.innerHTML='<div class="empty" style="padding:24px"><div class="ico">📅</div>Матчей нет</div>';return;}
   const stL={upcoming:'⏳ Скоро',live:'🔴 Идёт',grace:'⚡ Грейс',finished:'✅ Завершён'};
   el.innerHTML=matches.map(m=>{
-    const msk=new Date(new Date(m.match_time).getTime()+3*60*60*1000);
-    const dt=msk.toLocaleString('ru',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' МСК';
+    const mtp=m.match_time.split(/[T:\-]/);
+    const months2=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const dt=`${parseInt(mtp[2])} ${months2[parseInt(mtp[1])]}., ${mtp[3]}:${mtp[4]} МСК`;
     const pi=m.predictions.length?m.predictions.map(p=>`${p.name}:${p.home_score}:${p.away_score}`).join(' · '):'нет';
     return`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
       <div>
