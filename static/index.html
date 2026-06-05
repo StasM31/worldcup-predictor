@@ -274,11 +274,34 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 /* ── LEADERBOARD ── */
 .lb-wrap{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);}
 .lb-head{background:var(--navy);display:grid;grid-template-columns:46px 1fr 65px 44px 44px 56px 66px;gap:6px;padding:10px 20px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.6);font-family:'Oswald',sans-serif;}
-.lb-row{display:grid;grid-template-columns:46px 1fr 65px 44px 44px 56px 66px;gap:6px;padding:13px 20px;align-items:center;border-bottom:1px solid var(--border);transition:background .15s;}
+.lb-row{display:grid;grid-template-columns:46px 1fr 65px 44px 44px 56px 66px;gap:6px;padding:13px 20px;align-items:center;border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer;}
 .lb-row:last-child{border-bottom:none;}
 .lb-row:nth-child(2){background:linear-gradient(90deg,#fffbeb,#fff);}
 .lb-row:nth-child(3){background:linear-gradient(90deg,#f8f9fa,#fff);}
-.lb-row:hover{background:var(--bg);}
+.lb-row:hover{background:#f0f7ff;}
+
+/* Модальное окно истории */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:560px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.3);}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;color:var(--navy);letter-spacing:1px;}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;padding:0 4px;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:16px 22px;overflow-y:auto;}
+.hist-row{display:grid;grid-template-columns:1fr 60px 60px 50px;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);align-items:center;font-size:13px;}
+.hist-row:last-child{border-bottom:none;}
+.hist-match{color:var(--text2);font-size:12px;}
+.hist-real{font-family:'Oswald',sans-serif;font-size:16px;color:var(--navy);text-align:center;}
+.hist-pred{font-family:'Oswald',sans-serif;font-size:16px;text-align:center;}
+.modal-summary{background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;gap:20px;font-size:13px;}
+.modal-summary .ms-item{text-align:center;}
+.modal-summary .ms-num{font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;color:var(--navy);}
+.modal-summary .ms-label{color:var(--muted);font-size:11px;}
+body.dark-theme .modal{background:var(--surface);}
+body.dark-theme .modal-head{border-color:var(--border);}
+body.dark-theme .hist-row{border-color:var(--border);}
+body.dark-theme .modal-summary{background:var(--surface2);}
+body.dark-theme .modal-summary .ms-num{color:var(--text);}
 .lb-rank{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;text-align:center;color:var(--muted);}
 .r1{color:var(--gold2);}
 .r2{color:#9ca3af;}
@@ -514,7 +537,7 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
       </div>
       <div class="rules-card">
         <h3>🏆 О турнире</h3>
-        <p>Каждый участник делает прогноз на точный счёт матча до его начала. После старта — 1 минута грейс-периода. Побеждает тот, кто наберёт больше всего очков.</p>
+        <p>Приём прогнозов закрывается через 1 минуту после начала матча.</p>
       </div>
       <div class="rules-card">
         <h3>⚡ Очки за матчи</h3>
@@ -788,7 +811,7 @@ async function loadTournamentBanner(){
         <div class="tb-left">
           <div class="tb-icon">🏆</div>
           <div class="tb-text">
-            <strong>Твой прогноз на турнир принят</strong>
+            <strong>Твой долгосрочный прогноз на турнир принят</strong>
             <div class="tb-pred">
               Чемпион: <b>${my.champion||'—'}</b> · Бомбардир: <b>${my.top_scorer||'—'}</b>
             </div>
@@ -1047,18 +1070,72 @@ async function loadLeaderboard(){
     const rows=await api('/api/leaderboard');
     const medals=['🥇','🥈','🥉'];const rc=['r1','r2','r3'];
     document.getElementById('lb-content').innerHTML=`
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Нажми на участника чтобы увидеть историю его прогнозов</p>
       <div class="lb-wrap">
         <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center" title="Точных счётов">🎯 Точно</div><div style="text-align:center" title="Угадано исходов (включая точные)">✅ Исходов</div><div style="text-align:center" title="Процент угаданных матчей">% Попад.</div><div style="text-align:center">🌍 Бонус</div></div>
-        ${rows.map((r,i)=>`<div class="lb-row">
+        ${rows.map((r,i)=>`<div class="lb-row" onclick="showPlayerHistory('${r.name.replace(/'/g,"\\'")}')">
           <div class="lb-rank ${rc[i]||''}">${medals[i]||i+1}</div>
-          <div class="lb-name">${r.name}</div>
+          <div class="lb-name">${r.name} <span style="font-size:10px;color:var(--muted)">↗</span></div>
           <div class="lb-pts">${r.total_points}</div>
-          <div class="lb-stat">${r.exact_hits}</div>
-          <div class="lb-stat">${r.outcome_hits}</div>
+          <div class="lb-stat">${r.exact_hits||0}</div>
+          <div class="lb-stat">${r.outcome_hits||0}</div>
           <div class="lb-pct" style="color:${r.hit_pct>=50?'var(--green)':'var(--muted)'}">${r.hit_pct}%</div>
           <div class="lb-bonus">${r.tournament_bonus>0?`+${r.tournament_bonus}⭐`:'-'}</div>
         </div>`).join('')}
       </div>`;
+  }catch(e){toast(e.message,'err');}
+}
+
+async function showPlayerHistory(playerName){
+  try{
+    const rows = await api(`/api/player-history?player_name=${encodeURIComponent(playerName)}`);
+    const months=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const totalPts = rows.reduce((s,r)=>s+r.points,0);
+    const exact = rows.filter(r=>r.points>=3).length;
+    const outcome = rows.filter(r=>r.points>0).length;
+    const pct = rows.length ? Math.round(100*outcome/rows.length) : 0;
+
+    const histHtml = rows.length ? `
+      <div style="display:grid;grid-template-columns:1fr 60px 60px 50px;gap:8px;padding:6px 0;border-bottom:2px solid var(--border);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-family:'Oswald',sans-serif;">
+        <div>Матч</div><div style="text-align:center">Счёт</div><div style="text-align:center">Прогноз</div><div style="text-align:center">Очки</div>
+      </div>
+      ${rows.map(r=>{
+        const p=r.match_time.split(/[T:\-]/);
+        const dt=`${parseInt(p[2])} ${months[parseInt(p[1])]}`;
+        const ptsCls = r.points>=3?'pts-3':r.points>0?'pts-1':'pts-0';
+        const vb = r.is_vabank?'<span class="vb-label" style="font-size:9px">ВБ</span>':'';
+        return`<div class="hist-row">
+          <div>
+            <div style="font-weight:600;font-size:13px">${teamHtml(r.home_team)} <span style="color:var(--muted);font-size:11px">vs</span> ${teamHtml(r.away_team)}</div>
+            <div class="hist-match">${dt}</div>
+          </div>
+          <div class="hist-real">${r.real_home}:${r.real_away}</div>
+          <div class="hist-pred" style="color:var(--navy)">${r.home_score}:${r.away_score} ${vb}</div>
+          <div style="text-align:center"><span class="pts-b ${ptsCls}">${r.points}</span></div>
+        </div>`;
+      }).join('')}`
+    : '<div class="empty" style="padding:30px"><div class="ico">📂</div>Нет завершённых матчей</div>';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.id = 'player-modal';
+    modal.innerHTML = `<div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">📊 ${playerName}</div>
+        <button class="modal-close" onclick="document.getElementById('player-modal').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-summary">
+          <div class="ms-item"><div class="ms-num">${totalPts}</div><div class="ms-label">Очков</div></div>
+          <div class="ms-item"><div class="ms-num">${exact}</div><div class="ms-label">🎯 Точных</div></div>
+          <div class="ms-item"><div class="ms-num">${outcome}</div><div class="ms-label">✅ Исходов</div></div>
+          <div class="ms-item"><div class="ms-num" style="color:${pct>=50?'var(--green)':'var(--muted)'}">${pct}%</div><div class="ms-label">Попаданий</div></div>
+        </div>
+        ${histHtml}
+      </div>
+    </div>`;
+    modal.addEventListener('click', e=>{ if(e.target===modal) modal.remove(); });
+    document.body.appendChild(modal);
   }catch(e){toast(e.message,'err');}
 }
 
