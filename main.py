@@ -217,17 +217,6 @@ async def startup():
     asyncio.create_task(daily_digest_scheduler())
     asyncio.create_task(daily_backup_scheduler())
 
-# ── Ручные команды для теста ──
-@app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
-async def manual_digest():
-    await send_daily_digest()
-    return {"ok": True}
-
-@app.post("/api/admin/send-backup", dependencies=[Depends(require_admin)])
-async def manual_backup():
-    await send_backup()
-    return {"ok": True}
-
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
         try:
@@ -239,6 +228,17 @@ def parse_dt(s):
 def require_admin(x_admin_token: str = Header(...)):
     if x_admin_token != ADMIN_TOKEN:
         raise HTTPException(403, "Forbidden")
+
+# ── Ручные команды для теста (после require_admin) ──
+@app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
+async def manual_digest():
+    await send_daily_digest()
+    return {"ok": True}
+
+@app.post("/api/admin/send-backup", dependencies=[Depends(require_admin)])
+async def manual_backup():
+    await send_backup()
+    return {"ok": True}
 
 def get_player_by_token(token: str):
     with get_db() as db:
