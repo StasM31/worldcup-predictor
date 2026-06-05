@@ -219,16 +219,9 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .match-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
 .match-card:hover::before{opacity:1;}
 .match-card.vabank-card{border-color:rgba(220,38,38,0.35);background:linear-gradient(135deg,#fff,#fff8f8);}
-.match-card.predicted-card{border-color:rgba(22,163,74,0.7) !important;border-width:2px !important;background:linear-gradient(135deg,#f0fff4,#fff) !important;}
-.match-card.predicted-card::before{background:linear-gradient(90deg,transparent,var(--green),transparent) !important;opacity:1 !important;}
-.pred-check{
-  position:absolute;top:12px;right:12px;
-  width:22px;height:22px;border-radius:50%;
-  background:var(--green);color:#fff;
-  display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(22,163,74,0.3);
-}
-body.dark-theme .match-card.predicted-card{border-color:rgba(22,163,74,0.35);background:rgba(22,163,74,0.04);}
+.match-card.predicted-card{}
+
+
 .card-deco{position:absolute;right:-12px;bottom:-12px;width:60px;height:60px;opacity:0.05;pointer-events:none;}
 .match-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;}
 .teams-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -263,6 +256,10 @@ body.dark-theme .match-card.predicted-card{border-color:rgba(22,163,74,0.35);bac
   color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;
 }
 .score-input:focus{border-color:var(--gold2);box-shadow:0 0 0 3px rgba(212,160,23,0.1);}
+.score-input.score-done{border-color:#16a34a;border-width:2px;background:#f0fdf4;color:#15803d;font-weight:700;}
+.score-input.score-done:focus{border-color:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,0.15);}
+.score-done-sep{color:#16a34a !important;font-weight:900;}
+body.dark-theme .score-input.score-done{background:rgba(22,163,74,0.12);border-color:#22c55e;color:#4ade80;}
 .score-colon{font-family:'Oswald',sans-serif;font-size:24px;color:var(--muted);font-weight:700;}
 .my-pred{
   display:inline-flex;align-items:center;gap:8px;
@@ -939,9 +936,9 @@ function renderMatch(m){
     pred=`<div class="predict-area" style="margin-top:4px">
       <div class="predict-label">${hasExisting?'✏️ Изменить прогноз (до старта матча)':'Твой прогноз на счёт'}</div>
       <div class="predict-row">
-        <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
-        <span class="score-colon">:</span>
-        <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExisting?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <span class="score-colon ${hasExisting?'score-done-sep':''}">:</span>
+        <input class="score-input ${hasExisting?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThis?'true':'false'})">${hasExisting?'Изменить':'Поставить'}</button>
         ${!vbUsedOnThis?`<button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${(state.vabankUsed&&!vbUsedOnThis)?'disabled':''} title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:''}
       </div></div>`;
@@ -977,7 +974,7 @@ function renderMatch(m){
   }
   const hasPred = !!m.my_prediction;
   const cardClass = [isVb ? 'vabank-card' : '', hasPred ? 'predicted-card' : ''].filter(Boolean).join(' ');
-  const checkmark = (hasPred && m.status==='upcoming') ? '<div class="pred-check">✓</div>' : '';
+  const checkmark = '';
   return `<div class="match-card ${cardClass}" id="match-${m.id}">
     ${checkmark}
     ${ballSvg}
