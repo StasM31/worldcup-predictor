@@ -43,6 +43,7 @@ body.dark-theme .form-row input,
 body.dark-theme .form-row textarea,
 body.dark-theme .tourn-field input{background:#0d1825;border-color:var(--border);color:var(--text);}
 body.dark-theme .lb-wrap{background:var(--surface);border-color:var(--border);}
+body.dark-theme .lb-head{background:rgba(10,22,40,0.95);color:rgba(255,255,255,0.7);}
 body.dark-theme .lb-row{border-color:var(--border);}
 body.dark-theme .lb-row:nth-child(2){background:rgba(201,168,76,0.05);}
 body.dark-theme .lb-row:nth-child(3){background:rgba(255,255,255,0.02);}
@@ -559,7 +560,7 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
         <img id="trophy-img" src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&q=80" alt="FIFA World Cup Trophy" onerror="this.src='https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=600&q=80'">
         <div class="tourn-hero-text">
           <div class="tourn-hero-title">🏆 ПРОГНОЗ НА ФИНАЛИСТА</div>
-          <div class="tourn-hero-sub">Угадай чемпиона и финалистов</div>
+          <div class="tourn-hero-sub">Угадай чемпиона, финалистов и команду на 3-м месте</div>
         </div>
       </div>
       <div id="tourn-content"></div>
@@ -589,6 +590,25 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
       <div class="rules-card">
         <h3>🏆 О турнире</h3>
         <p>Приём прогнозов закрывается через 1 минуту после начала матча.</p>
+      </div>
+      <div class="rules-card">
+        <h3>💰 Призовой фонд</h3>
+        <p>Каждый участник вносит <strong>10 000 рублей</strong>. Призовой фонд распределяется так:</p>
+        <div class="rule-pts" style="grid-template-columns:1fr 1fr 1fr;margin-top:14px">
+          <div class="rule-pt"><div class="rule-pt-num" style="font-size:32px">60%</div><div class="rule-pt-label">🥇 1 место</div></div>
+          <div class="rule-pt"><div class="rule-pt-num" style="font-size:32px">30%</div><div class="rule-pt-label">🥈 2 место</div></div>
+          <div class="rule-pt"><div class="rule-pt-num" style="font-size:32px">10%</div><div class="rule-pt-label">🥉 3 место</div></div>
+        </div>
+      </div>
+      <div class="rules-card">
+        <h3>🏅 Определение победителя</h3>
+        <p>Побеждает участник, набравший наибольшее количество очков по итогам турнира.</p>
+        <p style="margin-top:10px"><strong>При равенстве очков</strong> преимущество получает участник:</p>
+        <ul style="margin-top:8px">
+          <li>с большим количеством <strong>точно угаданных счётов</strong> 🎯</li>
+          <li>при дальнейшем равенстве — с большим количеством <strong>угаданных исходов</strong> ✅</li>
+          <li>при дальнейшем равенстве — призовые места <strong>делятся поровну</strong></li>
+        </ul>
       </div>
       <div class="rules-card">
         <h3>⚡ Очки за матчи</h3>
@@ -657,6 +677,7 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
           <input id="tr-champion" placeholder="Чемпион">
           <input id="tr-fin1" placeholder="Финалист 1">
           <input id="tr-fin2" placeholder="Финалист 2">
+          <input id="tr-third" placeholder="3-е место">
           <button class="btn btn-primary" onclick="setTournamentResult()">Сохранить</button>
         </div>
       </div>
@@ -880,7 +901,7 @@ async function loadTournamentBanner(){
           <div class="tb-icon">⚠️</div>
           <div class="tb-text">
             <strong>Не забудь сделать прогноз на весь турнир!</strong>
-            Угадай чемпиона и финалистов — до начала первого матча.
+            Угадай чемпиона, финалистов и команду на 3-м месте — до начала первого матча.
           </div>
         </div>
         <button class="btn btn-gold btn-sm" onclick="showTab('tournament')">🏆 Сделать прогноз →</button>
@@ -1072,10 +1093,11 @@ async function loadTournament(){
 
     let bonusHtml='';
     if(my&&res){
-      const tot=(my.champion_pts||0)+(my.finalist_pts||0);
+      const tot=(my.champion_pts||0)+(my.finalist_pts||0)+(my.scorer_pts||0);
       bonusHtml=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
         <span class="bonus-pill">Чемпион: ${my.champion_pts>0?`+${my.champion_pts}⭐`:'0'}</span>
         <span class="bonus-pill">Финалисты: ${my.finalist_pts>0?`+${my.finalist_pts}⭐`:'0'}</span>
+        <span class="bonus-pill">3-е место: ${my.scorer_pts>0?`+${my.scorer_pts}⭐`:'0'}</span>
 
         <span class="bonus-pill" style="background:#dcfce7;border-color:#86efac;color:var(--green)">Итого: +${tot}⭐</span>
       </div>`;
@@ -1110,6 +1132,7 @@ async function loadTournament(){
    
              <div class="tourn-field"><label>🥈 Финалист 1 (+5 очков)</label><input id="tc-fin1" value="${my?.finalist1||''}" placeholder="Название сборной"></div>
              <div class="tourn-field"><label>🥈 Финалист 2 (+5 очков)</label><input id="tc-fin2" value="${my?.finalist2||''}" placeholder="Название сборной"></div>
+          <div class="tourn-field"><label>🥉 3-е место (+5 очков)</label><input id="tc-third" value="${my?.top_scorer||''}" placeholder="Название сборной"></div>
            </div>
            ${bonusHtml}
            <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="saveTournamentPred()">💾 Сохранить прогноз</button>
@@ -1121,6 +1144,7 @@ async function loadTournament(){
                🏆 Чемпион: <strong>${my.champion||'—'}</strong><br>
                🥈 Финалист 1: <strong>${my.finalist1||'—'}</strong><br>
                🥈 Финалист 2: <strong>${my.finalist2||'—'}</strong><br>
+               🥉 3-е место: <strong>${my.top_scorer||'—'}</strong><br>
              </div>
              ${bonusHtml}
            </div>`
@@ -1131,12 +1155,13 @@ async function loadTournament(){
            <div class="tourn-head">📊 Прогнозы всех участников</div>
            ${allData.predictions.length ? `
            <table class="adm-table">
-             <thead><tr><th>Участник</th><th>Чемпион</th><th>Финалисты</th>${res?'<th>Бонус</th>':''}</tr></thead>
+             <thead><tr><th>Участник</th><th>Чемпион</th><th>Финалисты</th><th>3-е место</th>${res?'<th>Бонус</th>':''}</tr></thead>
              <tbody>${allData.predictions.map(p=>`
                <tr>
                  <td><strong>${p.name}</strong></td>
                  <td style="font-size:13px">${teamHtml(p.champion||'—')}</td>
                  <td style="font-size:12px;color:var(--text2)">${p.finalist1||'—'} / ${p.finalist2||'—'}</td>
+              <td style="font-size:13px">${teamHtml(p.top_scorer||'—')}</td>
    
                  ${res?`<td><span class="bonus-pill">+${(p.champion_pts||0)+(p.finalist_pts||0)}</span></td>`:''}
                </tr>`).join('')}
@@ -1151,12 +1176,40 @@ async function loadTournament(){
   }catch(e){toast(e.message,'err');}
 }
 async function saveTournamentPred(){
-  const body={token:state.token,champion:document.getElementById('tc-champ').value.trim(),finalist1:document.getElementById('tc-fin1').value.trim(),finalist2:document.getElementById('tc-fin2').value.trim(),top_scorer:''};
+  const body={token:state.token,champion:document.getElementById('tc-champ').value.trim(),finalist1:document.getElementById('tc-fin1').value.trim(),finalist2:document.getElementById('tc-fin2').value.trim(),top_scorer:document.getElementById('tc-third').value.trim()};
   try{await api('/api/tournament-prediction',{method:'POST',body:JSON.stringify(body)});toast('Прогноз сохранён! 🏆');loadTournament();}
   catch(e){toast(e.message,'err');}
 }
 
 // ── LEADERBOARD ──
+let _lbSort = 'total_points';
+let _lbDir = -1;
+
+function sortLeaderboard(key){
+  if(_lbSort===key){ _lbDir*=-1; } else { _lbSort=key; _lbDir=-1; }
+  renderLeaderboard();
+}
+
+let _lbRows = [];
+
+function renderLeaderboard(){
+  const sorted = [..._lbRows].sort((a,b)=>{
+    const av = parseFloat(a[_lbSort])||0, bv = parseFloat(b[_lbSort])||0;
+    return (bv-av)*_lbDir;
+  });
+  const medals=['🥇','🥈','🥉']; const rc=['r1','r2','r3'];
+  const arrow = (key) => _lbSort===key ? (_lbDir===-1?'↓':'↑') : '';
+  document.getElementById('lb-table-body').innerHTML = sorted.map((r,i)=>`<div class="lb-row" onclick="showPlayerHistory('${r.name.replace(/'/g,"\'")}')">
+    <div class="lb-rank ${rc[i]||''}">${medals[i]||i+1}</div>
+    <div class="lb-name">${r.name} <span style="font-size:10px;color:var(--muted)">↗</span></div>
+    <div class="lb-pts">${r.total_points}</div>
+    <div class="lb-stat">${r.exact_hits||0}</div>
+    <div class="lb-stat">${r.outcome_hits||0}</div>
+    <div class="lb-pct" style="color:${r.hit_pct>=50?'var(--green)':'var(--muted)'}">${r.hit_pct}%</div>
+    <div class="lb-bonus">${r.tournament_bonus>0?`+${r.tournament_bonus}⭐`:'-'}</div>
+  </div>`).join('');
+}
+
 async function loadLeaderboard(){
   try{
     const rows=await api('/api/leaderboard');
@@ -1369,7 +1422,7 @@ async function sendBackup(){
   else toast('Ошибка — проверь BACKUP_CHAT_ID в Railway','err');
 }
 async function setTournamentResult(){
-  const body={champion:document.getElementById('tr-champion').value.trim(),finalist1:document.getElementById('tr-fin1').value.trim(),finalist2:document.getElementById('tr-fin2').value.trim(),top_scorer:''};
+  const body={champion:document.getElementById('tr-champion').value.trim(),finalist1:document.getElementById('tr-fin1').value.trim(),finalist2:document.getElementById('tr-fin2').value.trim(),top_scorer:document.getElementById('tr-third').value.trim()};
   if(!body.champion){toast('Введи чемпиона','err');return;}
   const res=await fetch('/api/admin/tournament-result',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify(body)});
   if(res.ok)toast('Итоги сохранены! Бонусы начислены 🏆');else toast('Ошибка','err');
