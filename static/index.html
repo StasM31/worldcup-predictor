@@ -990,10 +990,19 @@ async function loadPlayersTable(){
       <td><strong>${p.name}</strong></td>
       <td><span class="token-pill" onclick="copyLink('${origin}?token=${p.token}')">${p.token}</span></td>
       <td class="${p.telegram_chat_id?'tg-ok':'tg-no'}">${p.telegram_chat_id?'✅ Подключён':'⏳ Нет'}</td>
-      <td><button class="btn btn-ghost btn-sm" onclick="copyLink('${origin}?token=${p.token}')">📋</button></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="copyLink('${origin}?token=${p.token}')">📋</button>
+        <button class="btn btn-red btn-sm" onclick="deletePlayer(${p.id},'${p.name}')">✕</button>
+      </td>
     </tr>`).join('');
 }
 function copyLink(url){navigator.clipboard.writeText(url);toast('Скопировано!','info');}
+async function deletePlayer(id, name){
+  if(!confirm(`Удалить участника "${name}"?\n\nВсе его прогнозы и очки тоже удалятся.`))return;
+  const res=await fetch(`/api/admin/players/${id}`,{method:'DELETE',headers:{'x-admin-token':state.adminToken}});
+  if(res.ok){toast(`${name} удалён`,'info');await loadPlayersTable();}
+  else toast('Ошибка удаления','err');
+}
 async function addPlayer(){
   const name=document.getElementById('p-name').value.trim();if(!name)return;
   const res=await fetch('/api/admin/players',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({name})});
