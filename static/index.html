@@ -1084,20 +1084,20 @@ function renderMatch(m){
         ${vbUsedOnThis?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк поставлен на этот матч">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:'') }
       </div></div>`;
   } else if(m.status==='grace'){
-    if(m.my_prediction){
-      pred=`<div class="my-pred">${isVb?'<span class="vb-label">🔥 ВА-БАНК</span>':''} Мой прогноз: <strong>${m.my_prediction.home_score}:${m.my_prediction.away_score}</strong></div>`;
-    } else {
-      const vbDis=state.vabankUsed?'used':'';
-      pred=`<div class="predict-area" style="margin-top:4px">
-        <div class="predict-label" style="color:var(--green)">⚡ Последний шанс поставить!</div>
-        <div class="predict-row">
-          <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="0" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
-          <span class="score-colon">:</span>
-          <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="0" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
-          <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},false)">Поставить</button>
-          ${!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:''}
-        </div></div>`;
-    }
+    // В грейс-период можно и ставить и менять прогноз
+    const hasExistingGrace=!!m.my_prediction;
+    const hValG=m.my_prediction?m.my_prediction.home_score:0;
+    const aValG=m.my_prediction?m.my_prediction.away_score:0;
+    const vbUsedOnThisG=m.my_prediction?.is_vabank;
+    pred=`<div class="predict-area" style="margin-top:4px">
+      <div class="predict-label" style="color:var(--green)">⚡ ${hasExistingGrace?'Можно изменить ещё 1 минуту!':'Последний шанс поставить!'}</div>
+      <div class="predict-row">
+        <input class="score-input ${hasExistingGrace?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hValG}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <span class="score-colon ${hasExistingGrace?'score-done-sep':''}">:</span>
+        <input class="score-input ${hasExistingGrace?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aValG}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThisG?'true':'false'})">${hasExistingGrace?'Изменить':'Поставить'}</button>
+        ${vbUsedOnThisG?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:'')}
+      </div></div>`;
   } else if(m.status==='live'||m.status==='ended'){
     pred=`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:1px">🔒 СТАВКИ ЗАКРЫТЫ</div>`;
   }
