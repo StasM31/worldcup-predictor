@@ -861,25 +861,23 @@ async function loadMatches(){
     const shown = _showFinished ? matches : active;
     const finCount = finished.length;
 
-    let html = shown.map(m=>renderMatch(m)).join('');
-
-    // Кнопка показать/скрыть завершённые
+    // Кнопка вверху
+    let toggleBtn = '';
     if(finCount > 0){
       const btnText = _showFinished
         ? `▲ Скрыть завершённые матчи (${finCount})`
         : `▼ Показать завершённые матчи (${finCount})`;
-      const btnStyle = _showFinished
-        ? 'background:var(--bg);border:1.5px solid var(--border2);color:var(--muted);'
-        : 'background:var(--bg);border:1.5px dashed var(--border2);color:var(--muted);';
-      html += `<div style="text-align:center;margin-top:8px">
-        <button class="btn btn-ghost" style="${btnStyle}font-size:12px" onclick="toggleFinished()">
+      toggleBtn = `<div style="text-align:center;margin-bottom:12px">
+        <button class="btn btn-ghost" style="font-size:12px;width:100%;justify-content:center" onclick="toggleFinished()">
           ${btnText}
         </button>
       </div>`;
     }
 
+    let html = toggleBtn + shown.map(m=>renderMatch(m)).join('');
+
     if(!shown.length && !_showFinished){
-      html = `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>` + html;
+      html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>`;
     }
 
     el.innerHTML = html;
