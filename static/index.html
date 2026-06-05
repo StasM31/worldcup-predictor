@@ -219,6 +219,16 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .match-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
 .match-card:hover::before{opacity:1;}
 .match-card.vabank-card{border-color:rgba(220,38,38,0.35);background:linear-gradient(135deg,#fff,#fff8f8);}
+.match-card.predicted-card{border-color:rgba(22,163,74,0.7) !important;border-width:2px !important;background:linear-gradient(135deg,#f0fff4,#fff) !important;}
+.match-card.predicted-card::before{background:linear-gradient(90deg,transparent,var(--green),transparent) !important;opacity:1 !important;}
+.pred-check{
+  position:absolute;top:12px;right:12px;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--green);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;box-shadow:0 2px 6px rgba(22,163,74,0.3);
+}
+body.dark-theme .match-card.predicted-card{border-color:rgba(22,163,74,0.35);background:rgba(22,163,74,0.04);}
 .card-deco{position:absolute;right:-12px;bottom:-12px;width:60px;height:60px;opacity:0.05;pointer-events:none;}
 .match-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px;}
 .teams-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -965,7 +975,11 @@ function renderMatch(m){
   if(m.status==='upcoming'){
     timerHtml = `<div class="match-timer timer-normal" id="timer-${m.id}" data-msktime="${m.match_time}"></div>`;
   }
-  return `<div class="match-card ${isVb?'vabank-card':''}" id="match-${m.id}">
+  const hasPred = !!m.my_prediction;
+  const cardClass = [isVb ? 'vabank-card' : '', hasPred ? 'predicted-card' : ''].filter(Boolean).join(' ');
+  const checkmark = (hasPred && m.status==='upcoming') ? '<div class="pred-check">✓</div>' : '';
+  return `<div class="match-card ${cardClass}" id="match-${m.id}">
+    ${checkmark}
     ${ballSvg}
     <div class="match-top">
       <div class="teams-row">${teamHtml(m.home_team)}<span class="vs">vs</span>${teamHtml(m.away_team)}</div>
