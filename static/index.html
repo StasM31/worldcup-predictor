@@ -353,6 +353,33 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
 .arch-preds{padding:0 18px 14px;border-top:1px solid var(--border);}
 
 /* TOURNAMENT */
+
+/* ── ПРАЗДНИЧНАЯ ВКЛАДКА ФИНАЛИСТ ── */
+.tourn-hero{
+  position:relative;border-radius:16px;overflow:hidden;
+  margin-bottom:16px;height:200px;
+  background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 50%,#7c3a00 100%);
+}
+#confetti-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;}
+#trophy-img{
+  position:absolute;right:20px;bottom:0;
+  height:180px;width:auto;object-fit:contain;
+  z-index:1;filter:drop-shadow(0 0 20px rgba(201,168,76,0.5));
+  animation:trophy-float 3s ease-in-out infinite;
+}
+@keyframes trophy-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.tourn-hero-text{
+  position:absolute;left:24px;bottom:24px;z-index:3;
+}
+.tourn-hero-title{
+  font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;
+  letter-spacing:2px;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.5);
+  margin-bottom:4px;
+}
+.tourn-hero-sub{
+  font-size:13px;color:rgba(255,255,255,0.75);
+}
+
 .tourn-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:14px;box-shadow:var(--shadow);}
 .tourn-head{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--navy);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--border);}
 .tourn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
@@ -511,7 +538,7 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
   </header>
   <nav>
     <div class="tab active" onclick="showTab('matches')">Матчи</div>
-    <div class="tab" onclick="showTab('tournament')">Турнир</div>
+    <div class="tab" onclick="showTab('tournament')">🏆 Ставка на финал</div>
     <div class="tab" onclick="showTab('leaderboard')">Рейтинг</div>
     <div class="tab" onclick="showTab('archive')">Архив</div>
     <div class="tab" onclick="showTab('rules')">Правила</div>
@@ -527,9 +554,13 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
     </div>
 
     <div id="section-tournament" class="section">
-      <div class="section-banner">
-        <img src="https://images.unsplash.com/photo-1610201429897-2949a490cf6a?w=800&q=80" alt="Trophy">
-        <div class="section-banner-overlay"><div class="section-banner-title">🌍 Прогноз на турнир</div></div>
+      <div id="tourn-hero" class="tourn-hero">
+        <canvas id="confetti-canvas"></canvas>
+        <img id="trophy-img" src="https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&q=80" alt="FIFA World Cup Trophy" onerror="this.src='https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=600&q=80'">
+        <div class="tourn-hero-text">
+          <div class="tourn-hero-title">🏆 ПРОГНОЗ НА ФИНАЛИСТА</div>
+          <div class="tourn-hero-sub">Угадай чемпиона, финалистов и бомбардира</div>
+        </div>
       </div>
       <div id="tourn-content"></div>
     </div>
@@ -813,7 +844,8 @@ function showTab(name){
   if(name==='leaderboard')loadLeaderboard();
   if(name==='archive')loadArchive();
   if(name==='admin')loadAdmin();
-  if(name==='tournament')loadTournament();
+  if(name==='tournament'){loadTournament();setTimeout(()=>{if(_stopConfetti)_stopConfetti();_stopConfetti=startConfetti();},100);}
+  else{if(_stopConfetti){_stopConfetti();_stopConfetti=null;}}
 }
 
 // ── MATCHES ──
@@ -847,7 +879,7 @@ async function loadTournamentBanner(){
             Угадай чемпиона, финалистов и бомбардира — до начала первого матча.
           </div>
         </div>
-        <button class="btn btn-gold btn-sm" onclick="showTab('tournament')">Сделать прогноз →</button>
+        <button class="btn btn-gold btn-sm" onclick="showTab('tournament')">🏆 Сделать прогноз →</button>
       </div>`;
     } else if(!started && my){
       el.innerHTML = `<div class="tourn-banner done">
@@ -1393,6 +1425,41 @@ function applyTheme(){
     ['theme-btn','theme-btn2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀️';});
   }
 }
+
+
+// ── Конфетти на вкладке Финалист ──
+function startConfetti(){
+  const canvas = document.getElementById('confetti-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth || 700;
+  canvas.height = canvas.offsetHeight || 200;
+  const colors = ['#f0c84a','#e63946','#2ecc71','#3b82f6','#c9a84c','#fff','#ff6b6b','#4ecdc4'];
+  const pieces = Array.from({length:80},()=>({
+    x:Math.random()*canvas.width, y:Math.random()*canvas.height-canvas.height,
+    r:Math.random()*4+2, color:colors[Math.floor(Math.random()*colors.length)],
+    d:Math.random()*80+40, angle:Math.random()*Math.PI*2,
+    speed:Math.random()*1.5+0.5, tilt:Math.random()*10-5,
+    shape:Math.random()>0.5?'circle':'rect'
+  }));
+  let frame;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pieces.forEach(p=>{
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle);
+      ctx.fillStyle=p.color;ctx.globalAlpha=0.85;
+      if(p.shape==='circle'){ctx.beginPath();ctx.arc(0,0,p.r,0,Math.PI*2);ctx.fill();}
+      else{ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r);}
+      ctx.restore();
+      p.y+=p.speed; p.angle+=0.02; p.x+=Math.sin(p.d/50)*0.5;
+      if(p.y>canvas.height){p.y=-10;p.x=Math.random()*canvas.width;}
+    });
+    frame=requestAnimationFrame(draw);
+  }
+  draw();
+  return ()=>cancelAnimationFrame(frame);
+}
+let _stopConfetti = null;
 
 // ── Таймер обратного отсчёта ──
 function formatCountdown(mskTimeStr){
