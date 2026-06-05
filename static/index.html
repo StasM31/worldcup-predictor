@@ -219,6 +219,14 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .match-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);}
 .match-card:hover::before{opacity:1;}
 .match-card.vabank-card{border-color:rgba(220,38,38,0.35);background:linear-gradient(135deg,#fff,#fff8f8);}
+.match-card.finished-card{background:#f8f9fa;border-color:#e2e8f0;opacity:0.75;}
+.match-card.finished-card:hover{transform:none;box-shadow:var(--shadow);opacity:0.9;}
+.match-card.finished-card .team-name{color:#94a3b8;}
+.match-card.finished-card .vs{color:#cbd5e1;}
+.match-card.finished-card .flag-img{opacity:0.6;}
+body.dark-theme .match-card.finished-card{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06);}
+body.dark-theme .match-card.finished-card .team-name{color:#475569;}
+body.dark-theme .match-card.finished-card .vs{color:#334155;}
 
 
 
@@ -973,7 +981,7 @@ function renderMatch(m){
     timerHtml = `<div class="match-timer timer-normal" id="timer-${m.id}" data-msktime="${m.match_time}"></div>`;
   }
   const hasPred = !!m.my_prediction;
-  const cardClass = isVb ? 'vabank-card' : '';
+  const cardClass = isVb ? 'vabank-card' : m.status==='finished' ? 'finished-card' : '';
   const checkmark = '';
   return `<div class="match-card ${cardClass}" id="match-${m.id}">
     ${checkmark}
