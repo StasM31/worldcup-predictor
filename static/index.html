@@ -331,6 +331,20 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .au-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:blink2 2s infinite;}
 @keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
 
+.tourn-banner{
+  background:linear-gradient(135deg,var(--navy),#1a3a6e);
+  border:1.5px solid rgba(201,168,76,0.3);border-radius:12px;
+  padding:14px 18px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;
+}
+.tourn-banner.done{background:linear-gradient(135deg,#0d2a1a,#0f3320);border-color:rgba(46,204,113,0.3);}
+.tourn-banner .tb-left{display:flex;align-items:center;gap:10px;}
+.tourn-banner .tb-icon{font-size:24px;flex-shrink:0;}
+.tourn-banner .tb-text{font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;}
+.tourn-banner .tb-text strong{color:#fff;display:block;font-size:14px;margin-bottom:2px;}
+.tourn-banner .tb-pred{font-size:12px;color:rgba(255,255,255,0.6);line-height:1.8;}
+.tourn-banner .tb-pred b{color:var(--gold3);}
 .section-title{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
 
 /* Important banner */
@@ -418,7 +432,10 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
     <div class="tab" id="admin-tab" style="display:none" onclick="showTab('admin')">⚙ Админ</div>
   </nav>
   <main>
-    <div id="section-matches" class="section active"><div id="matches-list"></div></div>
+    <div id="section-matches" class="section active">
+      <div id="tournament-banner"></div>
+      <div id="matches-list"></div>
+    </div>
 
     <div id="section-tournament" class="section">
       <div class="section-banner">
@@ -710,6 +727,56 @@ function showTab(name){
 }
 
 // ── MATCHES ──
+async function loadTournamentBanner(){
+  try{
+    const data = await api('/api/tournament-prediction');
+    const allData = await api('/api/tournament-predictions-all');
+    const el = document.getElementById('tournament-banner');
+    if(!el) return;
+    const started = allData.tournament_started;
+    const my = data.my_prediction;
+    // После старта турнира — скрываем баннер (прогноз уже нельзя изменить)
+    if(started && my){
+      el.innerHTML = `<div class="tourn-banner done">
+        <div class="tb-left">
+          <div class="tb-icon">🏆</div>
+          <div class="tb-text">
+            <strong>Твой прогноз на турнир принят</strong>
+            <div class="tb-pred">
+              Чемпион: <b>${my.champion||'—'}</b> · Бомбардир: <b>${my.top_scorer||'—'}</b>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    } else if(!started && !my){
+      el.innerHTML = `<div class="tourn-banner">
+        <div class="tb-left">
+          <div class="tb-icon">⚠️</div>
+          <div class="tb-text">
+            <strong>Не забудь сделать прогноз на весь турнир!</strong>
+            Угадай чемпиона, финалистов и бомбардира — до начала первого матча.
+          </div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="showTab('tournament')">Сделать прогноз →</button>
+      </div>`;
+    } else if(!started && my){
+      el.innerHTML = `<div class="tourn-banner done">
+        <div class="tb-left">
+          <div class="tb-icon">✅</div>
+          <div class="tb-text">
+            <strong>Прогноз на турнир сделан</strong>
+            <div class="tb-pred">
+              Чемпион: <b>${my.champion||'—'}</b> · Финалисты: <b>${my.finalist1||'—'}</b> и <b>${my.finalist2||'—'}</b> · Бомбардир: <b>${my.top_scorer||'—'}</b>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.2)" onclick="showTab('tournament')">Изменить</button>
+      </div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  } catch(e){ console.log('Banner error:', e); }
+}
 async function loadMatches(){
   try{
     const matches=await api('/api/matches');
@@ -718,6 +785,7 @@ async function loadMatches(){
     el.innerHTML=matches.map(m=>renderMatch(m)).join('');
     updateTimers();
     ensureAutoUpdateBar();
+    loadTournamentBanner();
   }catch(e){toast(e.message,'err');}
 }
 function renderMatch(m){
