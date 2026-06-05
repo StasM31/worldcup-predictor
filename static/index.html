@@ -501,6 +501,9 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
     <div class="tab" onclick="showTab('archive')">Архив</div>
     <div class="tab" onclick="showTab('rules')">Правила</div>
     <div class="tab" id="admin-tab" style="display:none" onclick="showTab('admin')">⚙ Админ</div>
+    <div style="margin-left:auto;display:flex;align-items:center;padding:0 8px">
+      <button class="btn btn-ghost btn-sm" id="theme-btn2" onclick="toggleTheme()" title="Переключить тему" style="font-size:16px;padding:4px 10px;border:none">🌙</button>
+    </div>
   </nav>
   <main>
     <div id="section-matches" class="section active">
@@ -926,9 +929,9 @@ function renderMatch(m){
     pred=`<div class="predict-area" style="margin-top:4px">
       <div class="predict-label">${hasExisting?'✏️ Изменить прогноз (до старта матча)':'Твой прогноз на счёт'}</div>
       <div class="predict-row">
-        <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}">
+        <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
         <span class="score-colon">:</span>
-        <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}">
+        <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThis?'true':'false'})">${hasExisting?'Изменить':'Поставить'}</button>
         ${!vbUsedOnThis?`<button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${(state.vabankUsed&&!vbUsedOnThis)?'disabled':''} title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:''}
       </div></div>`;
@@ -940,9 +943,9 @@ function renderMatch(m){
       pred=`<div class="predict-area" style="margin-top:4px">
         <div class="predict-label" style="color:var(--green)">⚡ Последний шанс поставить!</div>
         <div class="predict-row">
-          <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="0">
+          <input class="score-input" id="h-${m.id}" type="number" min="0" max="20" value="0" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
           <span class="score-colon">:</span>
-          <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="0">
+          <input class="score-input" id="a-${m.id}" type="number" min="0" max="20" value="0" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
           <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},false)">Поставить</button>
           <button class="btn btn-vabank btn-sm ${vbDis}" onclick="submitPred(${m.id},true)" ${state.vabankUsed?'disabled':''}>🔥 Ва-банк</button>
         </div></div>`;
@@ -1361,14 +1364,14 @@ async function deleteMatch(id){
 function toggleTheme(){
   const isDark = document.body.classList.toggle('dark-theme');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  document.getElementById('theme-btn').textContent = isDark ? '☀️' : '🌙';
+  const icon = isDark ? '☀️' : '🌙';
+  ['theme-btn','theme-btn2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent=icon;});
 }
 function applyTheme(){
   const saved = localStorage.getItem('theme');
   if(saved === 'dark'){
     document.body.classList.add('dark-theme');
-    const btn = document.getElementById('theme-btn');
-    if(btn) btn.textContent = '☀️';
+    ['theme-btn','theme-btn2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀️';});
   }
 }
 
