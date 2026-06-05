@@ -847,16 +847,51 @@ async function loadTournamentBanner(){
     }
   } catch(e){ console.log('Banner error:', e); }
 }
+let _showFinished = false;
+
 async function loadMatches(){
   try{
     const matches=await api('/api/matches');
     const el=document.getElementById('matches-list');
     if(!matches.length){el.innerHTML='<div class="empty"><div class="ico">📅</div>Матчей пока нет</div>';return;}
-    el.innerHTML=matches.map(m=>renderMatch(m)).join('');
+
+    const active = matches.filter(m=>m.status!=='finished');
+    const finished = matches.filter(m=>m.status==='finished');
+
+    const shown = _showFinished ? matches : active;
+    const finCount = finished.length;
+
+    let html = shown.map(m=>renderMatch(m)).join('');
+
+    // Кнопка показать/скрыть завершённые
+    if(finCount > 0){
+      const btnText = _showFinished
+        ? `▲ Скрыть завершённые матчи (${finCount})`
+        : `▼ Показать завершённые матчи (${finCount})`;
+      const btnStyle = _showFinished
+        ? 'background:var(--bg);border:1.5px solid var(--border2);color:var(--muted);'
+        : 'background:var(--bg);border:1.5px dashed var(--border2);color:var(--muted);';
+      html += `<div style="text-align:center;margin-top:8px">
+        <button class="btn btn-ghost" style="${btnStyle}font-size:12px" onclick="toggleFinished()">
+          ${btnText}
+        </button>
+      </div>`;
+    }
+
+    if(!shown.length && !_showFinished){
+      html = `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>` + html;
+    }
+
+    el.innerHTML = html;
     updateTimers();
     ensureAutoUpdateBar();
     loadTournamentBanner();
   }catch(e){toast(e.message,'err');}
+}
+
+function toggleFinished(){
+  _showFinished = !_showFinished;
+  loadMatches();
 }
 function renderMatch(m){
   // Время хранится как московское, просто парсим строку напрямую
