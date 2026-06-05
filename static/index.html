@@ -581,6 +581,7 @@ body.dark-theme .podium-name{color:#e2e8f0;}
   </nav>
   <main>
     <div id="section-matches" class="section active">
+      <div id="tg-connect-banner-wrap"></div>
       <div id="tournament-banner"></div>
       <div id="matches-list"></div>
     </div>
@@ -898,7 +899,7 @@ function teamHtml(name){
 const ballSvg=`<svg class="card-deco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="47" fill="none" stroke="#0a1628" stroke-width="2"/><polygon points="50,5 58,28 82,28 63,43 70,65 50,51 30,65 37,43 18,28 42,28" fill="#0a1628"/><circle cx="50" cy="50" r="13" fill="none" stroke="#0a1628" stroke-width="2"/></svg>`;
 
 // ── State ──
-let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false};
+let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false,tgConnected:false,botUsername:''};
 function toast(msg,type='ok'){const e=document.getElementById('toast');e.textContent=msg;e.className=`toast show ${type}`;setTimeout(()=>e.classList.remove('show'),2800);}
 async function api(path,opts={}){
   const sep=path.includes('?')?'&':'?';
@@ -917,18 +918,43 @@ async function login(){
     state.playerName='Админ';enterApp();return;
   }
   state.token=input;
-  try{const me=await api('/api/me');state.playerName=me.name;state.vabankUsed=me.vabank_used;localStorage.setItem('player_token',input);enterApp();}
+  try{
+    const me=await api('/api/me');
+    state.playerName=me.name;state.vabankUsed=me.vabank_used;state.tgConnected=me.telegram_connected;
+    localStorage.setItem('player_token',input);
+    try{const bi=await fetch('/api/bot-info').then(r=>r.json());state.botUsername=bi.username||'';}catch(e){}
+    enterApp();
+  }
   catch(e){toast('Неверный токен','err');}
 }
+function showTgBanner(){
+  const wrap = document.getElementById('tg-connect-banner-wrap');
+  if(!wrap) return;
+  if(state.isAdmin || state.tgConnected){wrap.innerHTML='';return;}
+  const botLink = state.botUsername
+    ? `https://t.me/${state.botUsername}?start=${state.token}`
+    : '#';
+  wrap.innerHTML = `<div class="tg-connect-banner">
+    <div class="tcb-left">
+      <div class="tcb-icon">📲</div>
+      <div class="tcb-text">
+        <strong>Подключи Telegram — получай уведомления!</strong>
+        <span>Прогнозы участников и результаты матчей придут прямо в Telegram</span>
+      </div>
+    </div>
+    <a href="${botLink}" target="_blank" class="btn-tg">Подключить →</a>
+  </div>`;
+}
+
 function enterApp(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('user-name').textContent=state.playerName;
   document.getElementById('user-name2').textContent=state.playerName;
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
-  // Показываем вкладку победителей если она активирована
   checkWinnersTab();
   loadMatches();
+  showTgBanner();
   setTimeout(()=>{ensureAutoUpdateBar();startAutoUpdate();}, 800);
   applyTheme();
 }
@@ -1926,7 +1952,14 @@ if(urlToken)document.getElementById('token-input').value=urlToken;
 (async()=>{
   const saved=localStorage.getItem('player_token')||urlToken;
   if(saved){state.token=saved;
-    try{const me=await api('/api/me');state.playerName=me.name;state.vabankUsed=me.vabank_used;if(urlToken)localStorage.setItem('player_token',urlToken);enterApp();}
+    try{
+      const me=await api('/api/me');
+      state.playerName=me.name;state.vabankUsed=me.vabank_used;state.tgConnected=me.telegram_connected;
+      if(urlToken)localStorage.setItem('player_token',urlToken);
+      // Загружаем username бота
+      try{const bi=await fetch('/api/bot-info').then(r=>r.json());state.botUsername=bi.username||'';}catch(e){}
+      enterApp();
+    }
     catch(e){localStorage.removeItem('player_token');}
   }
 })();
