@@ -399,6 +399,23 @@ def archive(token: str):
             result.append(d)
     return result
 
+@app.get("/api/player-history")
+def player_history(token: str, player_name: str):
+    get_player_by_token(token)
+    with get_db() as db:
+        target = db.execute("SELECT id FROM players WHERE name=?", (player_name,)).fetchone()
+        if not target:
+            raise HTTPException(404, "Участник не найден")
+        rows = db.execute("""
+            SELECT m.home_team, m.away_team, m.match_time, m.home_score as real_home,
+                   m.away_score as real_away, p.home_score, p.away_score, p.points, p.is_vabank
+            FROM predictions p
+            JOIN matches m ON p.match_id = m.id
+            WHERE p.player_id = ? AND m.status = 'finished'
+            ORDER BY m.match_time DESC
+        """, (target["id"],)).fetchall()
+    return [dict(r) for r in rows]
+
 class TournamentPredIn(BaseModel):
     token: str; champion: str; finalist1: str; finalist2: str; top_scorer: str
 
