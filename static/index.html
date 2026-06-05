@@ -1072,7 +1072,7 @@ async function loadLeaderboard(){
     document.getElementById('lb-content').innerHTML=`
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Нажми на участника чтобы увидеть историю его прогнозов</p>
       <div class="lb-wrap">
-        <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center" title="Точных счётов">🎯 Точно</div><div style="text-align:center" title="Угадано исходов (включая точные)">✅ Исходов</div><div style="text-align:center" title="Процент угаданных матчей">% Попад.</div><div style="text-align:center">🌍 Бонус</div></div>
+        <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center" title="Точных счётов">🎯 Точно</div><div style="text-align:center" title="Угадано исходов (включая точные)">✅ Исходов</div><div style="text-align:center" title="Процент угаданных матчей">% угад.</div><div style="text-align:center">🌍 Бонус</div></div>
         ${rows.map((r,i)=>`<div class="lb-row" onclick="showPlayerHistory('${r.name.replace(/'/g,"\\'")}')">
           <div class="lb-rank ${rc[i]||''}">${medals[i]||i+1}</div>
           <div class="lb-name">${r.name} <span style="font-size:10px;color:var(--muted)">↗</span></div>
@@ -1129,7 +1129,7 @@ async function showPlayerHistory(playerName){
           <div class="ms-item"><div class="ms-num">${totalPts}</div><div class="ms-label">Очков</div></div>
           <div class="ms-item"><div class="ms-num">${exact}</div><div class="ms-label">🎯 Точных</div></div>
           <div class="ms-item"><div class="ms-num">${outcome}</div><div class="ms-label">✅ Исходов</div></div>
-          <div class="ms-item"><div class="ms-num" style="color:${pct>=50?'var(--green)':'var(--muted)'}">${pct}%</div><div class="ms-label">Попаданий</div></div>
+          <div class="ms-item"><div class="ms-num" style="color:${pct>=50?'var(--green)':'var(--muted)'}">${pct}%</div><div class="ms-label">% угаданных</div></div>
         </div>
         ${histHtml}
       </div>
