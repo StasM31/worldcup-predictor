@@ -7,7 +7,10 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 
 app = FastAPI()
-DATABASE = "predictor.db"
+# База данных — в /app/data/ если есть Volume, иначе рядом с кодом
+_DATA_DIR = "/app/data" if os.path.isdir("/app/data") else "."
+DATABASE = os.path.join(_DATA_DIR, "predictor.db")
+BACKUP_ADMIN_CHAT_ID = os.environ.get("BACKUP_CHAT_ID", "")  # Твой Telegram chat_id для бэкапов
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "changeme123")
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 GRACE_SECONDS = 60
@@ -164,19 +167,65 @@ async def send_daily_digest():
     if tasks:
         await asyncio.gather(*tasks)
 
+# ── Ежедневный бэкап базы данных в 03:00 МСК ──
+BACKUP_HOUR_MSK = 3
+
+async def daily_backup_scheduler():
+    """Каждую ночь в 03:00 МСК отправляет файл базы данных админу в Telegram."""
+    from datetime import timedelta
+    await asyncio.sleep(15)
+    last_backup_date = None
+    while True:
+        try:
+            now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).replace(tzinfo=None)
+            today = now_msk.date()
+            if now_msk.hour == BACKUP_HOUR_MSK and now_msk.minute < 1 and last_backup_date != today:
+                last_backup_date = today
+                await send_backup()
+                print(f"Backup sent at {now_msk}")
+        except Exception as e:
+            print(f"Backup scheduler error: {e}")
+        await asyncio.sleep(30)
+
+async def send_backup():
+    """Отправляет файл базы данных в Telegram."""
+    chat_id = BACKUP_ADMIN_CHAT_ID
+    if not BOT_TOKEN or not chat_id:
+        print("Backup: BOT_TOKEN or BACKUP_CHAT_ID not set, skipping")
+        return
+    if not os.path.exists(DATABASE):
+        print("Backup: database file not found")
+        return
+    from datetime import timedelta
+    now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).strftime("%d.%m.%Y %H:%M")
+    try:
+        async with httpx.AsyncClient() as client:
+            with open(DATABASE, "rb") as f:
+                await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument",
+                    data={"chat_id": chat_id, "caption": f"🗄 Бэкап базы данных\n📅 {now_msk} МСК"},
+                    files={"document": ("predictor.db", f, "application/octet-stream")},
+                    timeout=30
+                )
+        print(f"Backup sent to {chat_id}")
+    except Exception as e:
+        print(f"Backup send error: {e}")
+
 @app.on_event("startup")
 async def startup():
     asyncio.create_task(auto_start_scheduler())
     asyncio.create_task(daily_digest_scheduler())
+    asyncio.create_task(daily_backup_scheduler())
 
-def require_admin(x_admin_token: str = Header(...)):
-    if x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(403, "Forbidden")
-
-# Ручная отправка дайджеста (для теста)
+# ── Ручные команды для теста ──
 @app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
 async def manual_digest():
     await send_daily_digest()
+    return {"ok": True}
+
+@app.post("/api/admin/send-backup", dependencies=[Depends(require_admin)])
+async def manual_backup():
+    await send_backup()
     return {"ok": True}
 
 def parse_dt(s):
@@ -187,6 +236,9 @@ def parse_dt(s):
             continue
     return None
 
+def require_admin(x_admin_token: str = Header(...)):
+    if x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(403, "Forbidden")
 
 def get_player_by_token(token: str):
     with get_db() as db:
