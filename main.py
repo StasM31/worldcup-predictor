@@ -307,12 +307,32 @@ async def manual_backup():
 class PredictionIn(BaseModel):
     token: str; home_score: int; away_score: int; is_vabank: bool = False
 
+@app.get("/api/bot-info")
+async def bot_info():
+    """Возвращает username бота для формирования ссылки подключения."""
+    if not BOT_TOKEN:
+        return {"username": None}
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=5)
+            data = r.json()
+            return {"username": data.get("result", {}).get("username")}
+    except:
+        return {"username": None}
+
 @app.get("/api/me")
 def get_me(token: str):
     player = get_player_by_token(token)
     with get_db() as db:
         vb = db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone()
-    return {"id":player["id"],"name":player["name"],"vabank_used":bool(vb)}
+    # Получаем username бота из токена (формат: 123456:ABC... → имя не известно, отдаём флаг)
+    return {
+        "id": player["id"],
+        "name": player["name"],
+        "vabank_used": bool(vb),
+        "telegram_connected": bool(player["telegram_chat_id"]),
+        "player_token": player["token"]
+    }
 
 @app.get("/api/matches")
 def list_matches(token: str):
