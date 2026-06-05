@@ -378,7 +378,7 @@ def leaderboard(token: str):
                    COALESCE(SUM(p.points),0)+COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as total_points,
                    COUNT(p.id) as predictions_count,
                    SUM(CASE WHEN p.points>=3 THEN 1 ELSE 0 END) as exact_hits,
-                   SUM(CASE WHEN p.points=1 THEN 1 ELSE 0 END) as outcome_hits,
+                   SUM(CASE WHEN p.points>0 THEN 1 ELSE 0 END) as outcome_hits,
                    CASE WHEN COUNT(p.id)>0 THEN ROUND(100.0*SUM(CASE WHEN p.points>0 THEN 1 ELSE 0 END)/COUNT(p.id),1) ELSE 0 END as hit_pct,
                    COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as tournament_bonus
             FROM players pl LEFT JOIN predictions p ON pl.id=p.player_id
