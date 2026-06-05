@@ -583,24 +583,37 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
     </div>
 
     <div id="section-rules" class="section">
-      <div class="section-banner">
-        <img src="https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80" alt="Football rules">
-        <div class="section-banner-overlay"><div class="section-banner-title">📋 Правила турнира</div></div>
+      <!-- Красивый герой-баннер -->
+      <div style="background:linear-gradient(135deg,#0a1628 0%,#1a3a6e 60%,#0a1628 100%);border-radius:16px;overflow:hidden;margin-bottom:20px;position:relative;padding:28px 28px 24px;">
+        <div style="position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:80px;opacity:0.12">📋</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;color:#fff;letter-spacing:2px;margin-bottom:6px">ПРАВИЛА ТУРНИРА</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.6)" id="rules-subtitle">Загрузка...</div>
       </div>
-      <div class="rules-card">
+
+      <!-- О турнире -->
+      <div class="rules-card" style="border-left:4px solid var(--gold2)">
         <h3>🏆 О турнире</h3>
-        <p>Приём прогнозов закрывается через 1 минуту после начала матча.</p>
-      </div>
-      <div class="rules-card">
-        <h3>💰 Призовой фонд</h3>
-        <p>Каждый участник вносит <strong>10 000 рублей</strong>. Призовой фонд распределяется так:</p>
-        <div class="rule-pts" style="grid-template-columns:1fr 1fr 1fr;margin-top:14px">
-          <div class="rule-pt"><div class="rule-pt-num" style="font-size:32px">60%</div><div class="rule-pt-label">🥇 1 место</div></div>
-          <div class="rule-pt"><div class="rule-pt-num" style="font-size:32px">30%</div><div class="rule-pt-label">🥈 2 место</div></div>
-          <div class="rule-pt"><div class="rule-pt-num" style="font-size:32px">10%</div><div class="rule-pt-label">🥉 3 место</div></div>
+        <div id="rules-about-text">
+          <p>Приём прогнозов закрывается через 1 минуту после начала матча.</p>
         </div>
       </div>
-      <div class="rules-card">
+
+      <!-- Призовой фонд -->
+      <div class="rules-card" style="border-left:4px solid #16a34a">
+        <h3>💰 Призовой фонд</h3>
+        <p>Каждый участник вносит <strong>10 000 рублей</strong>.</p>
+        <div id="rules-prize-fund" style="margin-top:14px">
+          <!-- Заполняется динамически -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">60%</div><div class="rule-pt-label">🥇 1 место</div></div>
+            <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">30%</div><div class="rule-pt-label">🥈 2 место</div></div>
+            <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">10%</div><div class="rule-pt-label">🥉 3 место</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Определение победителя -->
+      <div class="rules-card" style="border-left:4px solid #7c3aed">
         <h3>🏅 Определение победителя</h3>
         <p>Побеждает участник, набравший наибольшее количество очков по итогам турнира.</p>
         <p style="margin-top:10px"><strong>При равенстве очков</strong> преимущество получает участник:</p>
@@ -610,7 +623,9 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
           <li>при дальнейшем равенстве — призовые места <strong>делятся поровну</strong></li>
         </ul>
       </div>
-      <div class="rules-card">
+
+      <!-- Очки за матчи -->
+      <div class="rules-card" style="border-left:4px solid var(--gold2)">
         <h3>⚡ Очки за матчи</h3>
         <div class="rule-pts">
           <div class="rule-pt"><div class="rule-pt-num">3</div><div class="rule-pt-label">🎯 Точный счёт угадан полностью</div></div>
@@ -625,7 +640,9 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
           </ul>
         </div>
       </div>
-      <div class="rules-card">
+
+      <!-- Бонусы -->
+      <div class="rules-card" style="border-left:4px solid #0ea5e9">
         <h3>🌍 Бонусы за весь турнир</h3>
         <ul>
           <li>Угадал чемпиона → <strong style="color:var(--navy)">+10 очков</strong></li>
@@ -634,12 +651,16 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
         </ul>
         <p style="margin-top:10px;color:var(--muted)">Прогноз на турнир можно изменить до начала первого матча.</p>
       </div>
-      <div class="rules-card">
+
+      <!-- Основное время -->
+      <div class="rules-card" style="border-left:4px solid var(--muted)">
         <h3>⏱ Основное время</h3>
         <p>Прогноз делается только на счёт <strong>основного времени матча (90 минут)</strong>.</p>
         <p style="margin-top:8px">Например: основное время завершилось со счётом <strong>1:1</strong>, в дополнительное время забили ещё гол — <strong>2:1</strong>. Расчёт ставки ведётся по счёту основного времени, то есть <strong>1:1</strong>.</p>
       </div>
-      <div class="rules-card">
+
+      <!-- Дедлайн -->
+      <div class="rules-card" style="border-left:4px solid var(--red)">
         <h3>⏰ Дедлайн ставок</h3>
         <p>Прогнозы принимаются <strong>в течение 1 минуты после официального старта матча</strong>. После — закрыто автоматически.</p>
         <p>Не успел → <strong style="color:var(--muted)">😴 0 очков за матч.</strong></p>
@@ -876,6 +897,7 @@ function showTab(name){
   if(name==='admin')loadAdmin();
   if(name==='tournament'){loadTournament();setTimeout(()=>{if(_stopConfetti)_stopConfetti();_stopConfetti=startConfetti();},100);}
   else{if(_stopConfetti){_stopConfetti();_stopConfetti=null;}}
+  if(name==='rules')loadRules();
 }
 
 // ── MATCHES ──
@@ -1215,6 +1237,50 @@ function renderLeaderboard(){
   </div>`).join('');
 }
 
+async function loadRules(){
+  try{
+    const lb = await api('/api/leaderboard');
+    const n = lb.length;
+    const fund = n * 10000;
+    const p1 = Math.round(fund * 0.6).toLocaleString('ru');
+    const p2 = Math.round(fund * 0.3).toLocaleString('ru');
+    const p3 = Math.round(fund * 0.1).toLocaleString('ru');
+    const fundStr = fund.toLocaleString('ru');
+
+    // Update subtitle
+    const sub = document.getElementById('rules-subtitle');
+    if(sub) sub.textContent = `${n} участников · Призовой фонд: ${fundStr} ₽`;
+
+    // Update about text
+    const about = document.getElementById('rules-about-text');
+    if(about) about.innerHTML = `<p>В турнире участвуют <strong>${n} человек</strong>. Приём прогнозов закрывается через 1 минуту после начала матча.</p>`;
+
+    // Update prize fund with roubles
+    const prize = document.getElementById('rules-prize-fund');
+    if(prize) prize.innerHTML = `
+      <p style="margin-bottom:12px;color:var(--text2)">Общий призовой фонд: <strong style="font-size:18px;color:var(--navy)">${fundStr} ₽</strong></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div class="rule-pt" style="border-top:3px solid #f0c84a">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">🥇 1 МЕСТО</div>
+          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">60%</div>
+          <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p1} ₽</div>
+        </div>
+        <div class="rule-pt" style="border-top:3px solid #9ca3af">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:4px">🥈 2 МЕСТО</div>
+          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">30%</div>
+          <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p2} ₽</div>
+        </div>
+        <div class="rule-pt" style="border-top:3px solid #cd7f32">
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#cd7f32;margin-bottom:4px">🥉 3 МЕСТО</div>
+          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">10%</div>
+          <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p3} ₽</div>
+        </div>
+      </div>`;
+  }catch(e){
+    const sub = document.getElementById('rules-subtitle');
+    if(sub) sub.textContent = 'Турнир прогнозов · ЧМ 2026';
+  }
+}
 async function loadLeaderboard(){
   try{
     const rows=await api('/api/leaderboard');
