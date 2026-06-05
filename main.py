@@ -469,6 +469,16 @@ def get_players():
         rows = db.execute("SELECT id,name,telegram_chat_id,token FROM players").fetchall()
     return [dict(r) for r in rows]
 
+@app.delete("/api/admin/players/{player_id}", dependencies=[Depends(require_admin)])
+def delete_player(player_id: int):
+    with get_db() as db:
+        # Удаляем все связанные данные
+        db.execute("DELETE FROM predictions WHERE player_id=?", (player_id,))
+        db.execute("DELETE FROM vabank_used WHERE player_id=?", (player_id,))
+        db.execute("DELETE FROM tournament_predictions WHERE player_id=?", (player_id,))
+        db.execute("DELETE FROM players WHERE id=?", (player_id,))
+    return {"ok": True}
+
 @app.post("/api/admin/matches", dependencies=[Depends(require_admin)])
 def add_match(body: MatchIn):
     with get_db() as db:
