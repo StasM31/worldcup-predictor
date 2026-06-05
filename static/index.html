@@ -667,7 +667,12 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
           <button class="btn btn-primary" onclick="sendDigest()">📊 Отправить таблицу сейчас</button>
           <button class="btn btn-ghost" onclick="sendBackup()">🗄 Сохранить бэкап сейчас</button>
         </div>
-        <p class="hint" style="margin-top:10px">🗄 Бэкап базы данных автоматически отправляется тебе в Telegram каждую ночь в <strong>03:00 МСК</strong>. Нужно один раз добавить переменную <code>BACKUP_CHAT_ID</code> в Railway (см. инструкцию ниже).</p>
+        <p class="hint" style="margin-top:10px">🗄 Бэкап базы данных автоматически отправляется тебе в Telegram каждую ночь в <strong>03:00 МСК</strong>.<br><br>
+        Чтобы настроить бэкап, сделай один раз:<br>
+        1. Напиши боту <strong>@userinfobot</strong> в Telegram — он ответит твоим числовым ID (например: 123456789)<br>
+        2. Зайди на <strong>railway.app</strong> → сервис web → вкладка <strong>Variables</strong> → <strong>New Variable</strong><br>
+        3. Name: <code>BACKUP_CHAT_ID</code>, Value: твой числовой ID из шага 1<br>
+        4. Нажми <strong>Add</strong> — готово!</p>
       </div>
       <div class="admin-block">
         <h3>📋 Управление матчами</h3>
