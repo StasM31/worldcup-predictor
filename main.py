@@ -335,7 +335,6 @@ async def predict(match_id: int, body: PredictionIn):
         if not match: raise HTTPException(404,"Матч не найден")
         if match["status"] not in ("upcoming","grace"): raise HTTPException(400,"Приём ставок закрыт")
         existing = db.execute("SELECT id,is_vabank FROM predictions WHERE player_id=? AND match_id=?", (player["id"],match_id)).fetchone()
-        if existing and match["status"]=="grace": raise HTTPException(400,"Матч уже начался")
         is_vabank = 0
         if body.is_vabank:
             if not existing:
