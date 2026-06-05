@@ -560,9 +560,8 @@ def set_tournament_result(body: TournamentResultIn):
             f = 0
             if tp["finalist1"] and tp["finalist1"].lower().strip() in fins: f+=5
             if tp["finalist2"] and tp["finalist2"].lower().strip() in fins: f+=5
-            s = 10 if tp["top_scorer"] and tp["top_scorer"].lower().strip()==body.top_scorer.lower().strip() else 0
             db.execute("UPDATE tournament_predictions SET champion_pts=?,finalist_pts=?,scorer_pts=? WHERE player_id=?",
-                      (c,f,s,tp["player_id"]))
+                      (c,f,0,tp["player_id"]))
     return {"ok":True}
 
 @app.post("/api/telegram/webhook")
