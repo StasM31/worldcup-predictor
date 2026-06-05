@@ -314,6 +314,23 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .empty{text-align:center;padding:48px 20px;color:var(--muted);}
 .empty .ico{font-size:44px;margin-bottom:10px;}
 
+
+.match-timer{
+  font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;
+  margin-top:5px;letter-spacing:.5px;
+}
+.timer-soon{color:var(--red);}
+.timer-normal{color:var(--muted);}
+.timer-today{color:var(--gold2);}
+.autoupdate-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  background:#fff;border:1px solid var(--border);border-radius:10px;
+  padding:8px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);
+}
+.autoupdate-bar strong{color:var(--text);}
+.au-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:blink2 2s infinite;}
+@keyframes blink2{0%,100%{opacity:1}50%{opacity:.3}}
+
 .section-title{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
 
 /* Important banner */
@@ -677,6 +694,7 @@ function enterApp(){
   document.getElementById('user-name2').textContent=state.playerName;
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
   loadMatches();
+  setTimeout(startAutoUpdate, 1000);
 }
 function logout(){localStorage.removeItem('player_token');location.href=location.origin+location.pathname;}
 function showTab(name){
@@ -763,11 +781,16 @@ function renderMatch(m){
       <div id="preds-list-${m.id}" style="display:none;margin-top:8px"></div>
     </div>`;
   }
+  // Таймер обратного отсчёта
+  let timerHtml = '';
+  if(m.status==='upcoming'){
+    timerHtml = `<div class="match-timer timer-normal" id="timer-${m.id}" data-msktime="${m.match_time}"></div>`;
+  }
   return `<div class="match-card ${isVb?'vabank-card':''}" id="match-${m.id}">
     ${ballSvg}
     <div class="match-top">
       <div class="teams-row">${teamHtml(m.home_team)}<span class="vs">vs</span>${teamHtml(m.away_team)}</div>
-      <div class="match-meta"><div class="match-time">${timeStr}</div>${badge}</div>
+      <div class="match-meta"><div class="match-time">${timeStr}</div>${timerHtml}${badge}</div>
     </div>
     ${result}${pred}${predsSection}
   </div>`;
@@ -1100,6 +1123,91 @@ async function deleteMatch(id){
   if(!confirm('Удалить матч?'))return;
   await fetch(`/api/admin/matches/${id}`,{method:'DELETE',headers:{'x-admin-token':state.adminToken}});
   toast('Удалён','info');loadAdminMatches();loadMatches();
+}
+
+
+// ── Таймер обратного отсчёта ──
+function formatCountdown(mskTimeStr){
+  // Парсим московское время матча
+  const parts = mskTimeStr.split(/[T:\-]/);
+  const y=parseInt(parts[0]),mo=parseInt(parts[1])-1,d=parseInt(parts[2]);
+  const h=parseInt(parts[3]),mi=parseInt(parts[4]||'0');
+  // Текущее московское время
+  const nowUtc = Date.now();
+  const nowMsk = nowUtc + 3*60*60*1000;
+  // Время матча в UTC (MSK = UTC+3)
+  const matchUtc = Date.UTC(y,mo,d,h,mi) - 3*60*60*1000;
+  const diff = matchUtc - nowUtc;
+  if(diff <= 0) return null;
+  const days = Math.floor(diff/86400000);
+  const hours = Math.floor((diff%86400000)/3600000);
+  const mins = Math.floor((diff%3600000)/60000);
+  const secs = Math.floor((diff%60000)/1000);
+  if(days > 0) return {text:`через ${days}д ${hours}ч`, cls:'timer-normal'};
+  if(hours > 0) return {text:`через ${hours}ч ${mins}мин`, cls:'timer-today'};
+  if(mins > 5) return {text:`через ${mins} мин`, cls:'timer-today'};
+  return {text:`через ${mins}м ${secs}с`, cls:'timer-soon'};
+}
+
+function updateTimers(){
+  document.querySelectorAll('[id^="timer-"]').forEach(el=>{
+    const t = formatCountdown(el.dataset.msktime);
+    if(t){ el.textContent=t.text; el.className=`match-timer ${t.cls}`; }
+    else { el.textContent=''; }
+  });
+}
+setInterval(updateTimers, 1000);
+
+// ── Автообновление ──
+let _autoUpdateInterval = null;
+let _autoUpdateCountdown = 30;
+let _lastTab = 'matches';
+
+function startAutoUpdate(){
+  if(_autoUpdateInterval) clearInterval(_autoUpdateInterval);
+  _autoUpdateCountdown = 30;
+  updateAutoUpdateBar();
+  _autoUpdateInterval = setInterval(()=>{
+    _autoUpdateCountdown--;
+    updateAutoUpdateBar();
+    if(_autoUpdateCountdown <= 0){
+      _autoUpdateCountdown = 30;
+      if(_lastTab==='matches') loadMatches();
+      else if(_lastTab==='leaderboard') loadLeaderboard();
+    }
+  }, 1000);
+}
+
+function updateAutoUpdateBar(){
+  const bar = document.getElementById('autoupdate-bar');
+  if(bar) bar.querySelector('.au-countdown').textContent = _autoUpdateCountdown + 'с';
+}
+
+// Добавляем бар в секцию матчей при входе
+const _origEnterApp = enterApp;
+// Перехватываем showTab чтобы знать текущую вкладку
+const _origShowTab = showTab;
+// Переопределяем showTab
+window._showTabOrig = showTab;
+function showTab(name){
+  _lastTab = name;
+  _showTabOrig(name);
+}
+
+// Добавляем бар автообновления после loadMatches
+const _origLoadMatches = loadMatches;
+async function loadMatches(){
+  await _origLoadMatches();
+  updateTimers();
+  // Добавить бар если ещё нет
+  const section = document.getElementById('section-matches');
+  if(section && !document.getElementById('autoupdate-bar')){
+    const bar = document.createElement('div');
+    bar.className='autoupdate-bar';
+    bar.id='autoupdate-bar';
+    bar.innerHTML='<span><span class="au-dot"></span><strong>Автообновление</strong> каждые 30 секунд</span><span style="color:var(--muted)">Следующее через <span class="au-countdown">30с</span></span>';
+    section.insertBefore(bar, section.firstChild);
+  }
 }
 
 // Auto-login
