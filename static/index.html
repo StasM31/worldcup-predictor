@@ -636,9 +636,9 @@ body.dark-theme .podium-name{color:#e2e8f0;}
         <div id="rules-prize-fund" style="margin-top:14px">
           <!-- Заполняется динамически -->
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-            <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">65%</div><div class="rule-pt-label">🥇 1 место</div></div>
+            <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">60%</div><div class="rule-pt-label">🥇 1 место</div></div>
             <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">30%</div><div class="rule-pt-label">🥈 2 место</div></div>
-            <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">5%</div><div class="rule-pt-label">🥉 3 место</div></div>
+            <div class="rule-pt"><div class="rule-pt-num" style="font-size:28px">10%</div><div class="rule-pt-label">🥉 3 место</div></div>
           </div>
         </div>
       </div>
@@ -1291,9 +1291,9 @@ async function loadRules(){
     const lb = await api('/api/leaderboard');
     const n = lb.length;
     const fund = n * 15000;
-    const p1 = Math.round(fund * 0.65).toLocaleString('ru');
+    const p1 = Math.round(fund * 0.60).toLocaleString('ru');
     const p2 = Math.round(fund * 0.30).toLocaleString('ru');
-    const p3 = Math.round(fund * 0.05).toLocaleString('ru');
+    const p3 = Math.round(fund * 0.10).toLocaleString('ru');
     const fundStr = fund.toLocaleString('ru');
 
     // Update subtitle
@@ -1311,7 +1311,7 @@ async function loadRules(){
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
         <div class="rule-pt" style="border-top:3px solid #f0c84a">
           <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">🥇 1 МЕСТО</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">65%</div>
+          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">60%</div>
           <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p1} ₽</div>
         </div>
         <div class="rule-pt" style="border-top:3px solid #9ca3af">
@@ -1321,7 +1321,7 @@ async function loadRules(){
         </div>
         <div class="rule-pt" style="border-top:3px solid #cd7f32">
           <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#cd7f32;margin-bottom:4px">🥉 3 МЕСТО</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">5%</div>
+          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">10%</div>
           <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p3} ₽</div>
         </div>
       </div>`;
@@ -1854,7 +1854,7 @@ async function loadWinners(){
     const archive = await api('/api/archive');
     const n = lb.length;
     const fund = n * 15000;
-    const prizes = [Math.round(fund*0.65), Math.round(fund*0.30), Math.round(fund*0.05)];
+    const prizes = [Math.round(fund*0.60), Math.round(fund*0.30), Math.round(fund*0.10)];
     const medals = ['🥇','🥈','🥉'];
     const podiumOrder = [1,0,2]; // 2nd, 1st, 3rd для визуального пьедестала
 
