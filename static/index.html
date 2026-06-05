@@ -19,6 +19,51 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
+
+/* ── ТЁМНАЯ ТЕМА ── */
+body.dark-theme{
+  --bg:#0f1923;--surface:#1a2535;--surface2:#1f2d40;
+  --navy:#e8f0f8;--navy2:#c5d5e8;
+  --text:#e8f0f8;--text2:#a8c0d8;--muted:#6b8aaa;
+  --border:#2a3f58;--border2:#2a3f58;
+  background:var(--bg);color:var(--text);
+}
+body.dark-theme .match-card,
+body.dark-theme .tourn-card,
+body.dark-theme .rules-card,
+body.dark-theme .arch-match,
+body.dark-theme .admin-block{
+  background:var(--surface);border-color:var(--border);
+  box-shadow:0 4px 20px rgba(0,0,0,0.3);
+}
+body.dark-theme .sticky-header,
+body.dark-theme nav{background:rgba(15,25,35,0.97);border-color:var(--border);}
+body.dark-theme .score-input,
+body.dark-theme .form-row input,
+body.dark-theme .form-row textarea,
+body.dark-theme .tourn-field input{background:#0d1825;border-color:var(--border);color:var(--text);}
+body.dark-theme .lb-wrap{background:var(--surface);border-color:var(--border);}
+body.dark-theme .lb-row{border-color:var(--border);}
+body.dark-theme .lb-row:nth-child(2){background:rgba(201,168,76,0.05);}
+body.dark-theme .lb-row:nth-child(3){background:rgba(255,255,255,0.02);}
+body.dark-theme .lb-row:hover{background:rgba(255,255,255,0.04);}
+body.dark-theme .lb-pts{color:var(--gold3);}
+body.dark-theme .lb-name{color:var(--text);}
+body.dark-theme .my-pred{background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.2);}
+body.dark-theme .b-upcoming{background:rgba(201,168,76,0.12);}
+body.dark-theme .b-finished{background:rgba(255,255,255,0.05);color:#6b8aaa;}
+body.dark-theme .preds-toggle{border-color:var(--border);}
+body.dark-theme .pred-row{border-color:var(--border);}
+body.dark-theme .arch-header:hover{background:var(--surface2);}
+body.dark-theme .arch-preds{border-color:var(--border);}
+body.dark-theme .result-display{color:var(--gold3);}
+body.dark-theme .adm-table td{border-color:var(--border);}
+body.dark-theme .adm-table th{border-color:var(--border);}
+body.dark-theme .token-pill{background:#0d1825;border-color:var(--border);color:var(--text2);}
+body.dark-theme .hint{background:var(--surface2);}
+body.dark-theme .autoupdate-bar{background:var(--surface);border-color:var(--border);}
+body.dark-theme .tourn-banner.done{border-color:rgba(46,204,113,0.25);}
+
 /* ── HERO BACKGROUND ── */
 .hero-bg{
   position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -420,6 +465,7 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
     </div>
     <div class="sh-right">
       <strong id="user-name2"></strong>
+      <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Переключить тему">🌙</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Выйти</button>
     </div>
   </header>
@@ -712,6 +758,7 @@ function enterApp(){
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
   loadMatches();
   setTimeout(()=>{ensureAutoUpdateBar();startAutoUpdate();}, 800);
+  applyTheme();
 }
 function logout(){localStorage.removeItem('player_token');location.href=location.origin+location.pathname;}
 function showTab(name){
@@ -1001,7 +1048,7 @@ async function loadLeaderboard(){
     const medals=['🥇','🥈','🥉'];const rc=['r1','r2','r3'];
     document.getElementById('lb-content').innerHTML=`
       <div class="lb-wrap">
-        <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center">🎯</div><div style="text-align:center">✅</div><div style="text-align:center">%</div><div style="text-align:center">Бонус</div></div>
+        <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center" title="Точных счётов">🎯 Точно</div><div style="text-align:center" title="Угадано исходов (включая точные)">✅ Исходов</div><div style="text-align:center" title="Процент угаданных матчей">% Попад.</div><div style="text-align:center">🌍 Бонус</div></div>
         ${rows.map((r,i)=>`<div class="lb-row">
           <div class="lb-rank ${rc[i]||''}">${medals[i]||i+1}</div>
           <div class="lb-name">${r.name}</div>
@@ -1177,8 +1224,8 @@ async function loadAdminMatches(){
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
         ${m.status==='upcoming'?`<span style="font-size:10px;color:var(--muted);font-weight:700">⏳ АВТО</span>`:''}
-        ${m.status==='live'||m.status==='grace'?`<button class="btn btn-gold btn-sm" onclick="promptResult(${m.id})">Счёт</button>`:''}
-        ${m.status==='finished'?`<span style="color:var(--green);font-family:'Oswald';font-size:18px;font-weight:700">${m.home_score}:${m.away_score}</span>`:''}
+        ${m.status==='live'||m.status==='grace'||m.status==='ended'?`<button class="btn btn-gold btn-sm" onclick="promptResult(${m.id})">Ввести счёт</button>`:''}
+        ${m.status==='finished'?`<span style="display:flex;align-items:center;gap:6px"><span style="color:var(--green);font-family:'Oswald';font-size:18px;font-weight:700">${m.home_score}:${m.away_score}</span><button class="btn btn-ghost btn-sm" onclick="promptResult(${m.id})" title="Исправить счёт">✏️</button></span>`:''}
         <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})">✕</button>
       </div>
     </div>`;
@@ -1196,6 +1243,22 @@ async function deleteMatch(id){
   toast('Удалён','info');loadAdminMatches();loadMatches();
 }
 
+
+
+// ── Тема ──
+function toggleTheme(){
+  const isDark = document.body.classList.toggle('dark-theme');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  document.getElementById('theme-btn').textContent = isDark ? '☀️' : '🌙';
+}
+function applyTheme(){
+  const saved = localStorage.getItem('theme');
+  if(saved === 'dark'){
+    document.body.classList.add('dark-theme');
+    const btn = document.getElementById('theme-btn');
+    if(btn) btn.textContent = '☀️';
+  }
+}
 
 // ── Таймер обратного отсчёта ──
 function formatCountdown(mskTimeStr){
