@@ -694,10 +694,11 @@ function enterApp(){
   document.getElementById('user-name2').textContent=state.playerName;
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
   loadMatches();
-  setTimeout(startAutoUpdate, 1000);
+  setTimeout(()=>{ensureAutoUpdateBar();startAutoUpdate();}, 800);
 }
 function logout(){localStorage.removeItem('player_token');location.href=location.origin+location.pathname;}
 function showTab(name){
+  _lastTab = name;
   const tabs=['matches','tournament','leaderboard','archive','rules','admin'];
   document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabs[i]===name));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -715,6 +716,8 @@ async function loadMatches(){
     const el=document.getElementById('matches-list');
     if(!matches.length){el.innerHTML='<div class="empty"><div class="ico">📅</div>Матчей пока нет</div>';return;}
     el.innerHTML=matches.map(m=>renderMatch(m)).join('');
+    updateTimers();
+    ensureAutoUpdateBar();
   }catch(e){toast(e.message,'err');}
 }
 function renderMatch(m){
@@ -1185,21 +1188,10 @@ function updateAutoUpdateBar(){
 
 // Добавляем бар в секцию матчей при входе
 const _origEnterApp = enterApp;
-// Перехватываем showTab чтобы знать текущую вкладку
-const _origShowTab = showTab;
-// Переопределяем showTab
-window._showTabOrig = showTab;
-function showTab(name){
-  _lastTab = name;
-  _showTabOrig(name);
-}
+// Запоминаем текущую вкладку через data
 
-// Добавляем бар автообновления после loadMatches
-const _origLoadMatches = loadMatches;
-async function loadMatches(){
-  await _origLoadMatches();
-  updateTimers();
-  // Добавить бар если ещё нет
+// Бар автообновления добавляется один раз при входе
+function ensureAutoUpdateBar(){
   const section = document.getElementById('section-matches');
   if(section && !document.getElementById('autoupdate-bar')){
     const bar = document.createElement('div');
