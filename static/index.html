@@ -855,8 +855,8 @@ async function loadMatches(){
     const el=document.getElementById('matches-list');
     if(!matches.length){el.innerHTML='<div class="empty"><div class="ico">📅</div>Матчей пока нет</div>';return;}
 
-    const active = matches.filter(m=>m.status!=='finished');
-    const finished = matches.filter(m=>m.status==='finished');
+    const active = matches.filter(m=>m.status!=='finished' && m.status!=='ended');
+    const finished = matches.filter(m=>m.status==='finished' || m.status==='ended');
 
     const shown = _showFinished ? matches : active;
     const finCount = finished.length;
@@ -1417,7 +1417,9 @@ function startAutoUpdate(){
     _autoUpdateCountdown--;
     updateAutoUpdateBar();
     if(_autoUpdateCountdown <= 0){
-      _autoUpdateCountdown = 30;
+      // Если есть активные матчи — обновляем чаще (каждые 10с)
+      const hasActive = document.querySelector('.badge.b-live, .badge.b-grace');
+      _autoUpdateCountdown = hasActive ? 10 : 30;
       if(_lastTab==='matches') loadMatches();
       else if(_lastTab==='leaderboard') loadLeaderboard();
     }
@@ -1440,7 +1442,7 @@ function ensureAutoUpdateBar(){
     const bar = document.createElement('div');
     bar.className='autoupdate-bar';
     bar.id='autoupdate-bar';
-    bar.innerHTML='<span><span class="au-dot"></span><strong>Автообновление</strong> каждые 30 секунд</span><span style="color:var(--muted)">Следующее через <span class="au-countdown">30с</span></span>';
+    bar.innerHTML='<span><span class="au-dot"></span><strong>Автообновление</strong></span><span style="color:var(--muted)">Следующее через <span class="au-countdown">30с</span></span>';
     section.insertBefore(bar, section.firstChild);
   }
 }
