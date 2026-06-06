@@ -398,8 +398,11 @@ body.dark-theme .modal-summary .ms-num{color:var(--text);}
 .rule-pt{background:var(--bg);border:2px solid var(--border);border-radius:11px;padding:16px;text-align:center;}
 .rule-pt-num{font-family:'Oswald',sans-serif;font-size:42px;font-weight:700;color:var(--navy);}
 .rule-pt-label{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;font-weight:600;}
-.rule-vb{background:#fef2f2;border:2px solid rgba(220,38,38,0.2);border-radius:11px;padding:16px;margin:14px 0;}
+.rule-vb{background:#fef2f2;border:2px solid rgba(220,38,38,0.25);border-radius:11px;padding:16px;margin:14px 0;}
 .rule-vb-title{font-family:'Oswald',sans-serif;font-size:15px;color:var(--red);letter-spacing:1px;margin-bottom:8px;}
+body.dark-theme .rule-vb{background:rgba(220,38,38,0.12);border-color:rgba(220,38,38,0.35);}
+body.dark-theme .rule-vb li{color:#fca5a5;}
+body.dark-theme .rule-vb-title{color:#f87171;}
 
 /* ADMIN */
 .admin-block{margin-bottom:24px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:var(--shadow);}
@@ -701,6 +704,27 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
         <p>Прогнозы принимаются <strong>в течение 1 минуты после официального старта матча</strong>. После — закрыто автоматически.</p>
         <p>Не успел → <strong style="color:var(--muted)">😴 0 очков за матч.</strong></p>
       </div>
+      <div class="rules-card" style="border-left:4px solid var(--blue)">
+        <h3>📖 Как сделать прогноз</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--gold2);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">1</div>
+            <div><strong>Открой вкладку «Матчи»</strong><br><span style="color:var(--muted);font-size:13px">Найди матч со статусом <span style="background:var(--gold-light);color:var(--gold);padding:1px 7px;border-radius:10px;font-size:11px;font-weight:700">● Скоро</span> — это значит ставки принимаются.</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--gold2);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">2</div>
+            <div><strong>Введи счёт</strong><br><span style="color:var(--muted);font-size:13px">Нажми на поле счёта и введи цифры — сначала голы хозяев, затем гостей.</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--gold2);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">3</div>
+            <div><strong>Нажми кнопку «Поставить»</strong><br><span style="color:var(--muted);font-size:13px">После нажатия поля счёта станут <span style="color:var(--green);font-weight:700">зелёными</span> — это значит прогноз принят. До начала матча можно изменить прогноз кнопкой «Изменить».</span></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:12px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">!</div>
+            <div><strong>Не забудь про ва-банк</strong><br><span style="color:var(--muted);font-size:13px">Один раз за весь турнир можно нажать <span style="background:#7f1d1d;color:#fca5a5;padding:1px 8px;border-radius:6px;font-size:11px">🔥 Ва-банк</span> вместо «Поставить» — очки утраиваются!</span></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="section-winners" class="section">
@@ -710,6 +734,22 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
 
     <div id="section-admin" class="section">
       <div id="import-banner-wrap"></div>
+      <div class="admin-block" id="prize-settings-block">
+        <h3>💰 Взнос и призовой фонд</h3>
+        <p class="hint">Настрой сумму взноса и распределение призов. Проценты вводи через запятую (например: 60,30,10). Сумма в % должна быть равна 100.</p>
+        <div class="form-row" style="align-items:center;flex-wrap:wrap">
+          <div style="flex:1;min-width:150px">
+            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;font-weight:600">Взнос на участника (₽)</label>
+            <input id="s-fee" type="number" min="0" placeholder="15000" style="width:100%">
+          </div>
+          <div style="flex:2;min-width:200px">
+            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;font-weight:600">Призовые места — % через запятую</label>
+            <input id="s-prizes" placeholder="60,30,10" style="width:100%">
+          </div>
+          <button class="btn btn-primary" onclick="savePrizeSettings()" style="align-self:flex-end">Сохранить</button>
+        </div>
+        <div id="prize-preview" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
+      </div>
       <div class="admin-block">
         <h3>👥 Участники</h3>
         <div class="form-row"><input id="p-name" placeholder="Имя участника"><button class="btn btn-primary" onclick="addPlayer()">Добавить</button></div>
@@ -1102,29 +1142,29 @@ function renderMatch(m){
     const hasExisting=!!m.my_prediction;
     const vbDis=(state.vabankUsed&&!m.my_prediction?.is_vabank)?'used':'';
     const vbUsedOnThis=m.my_prediction?.is_vabank;
-    const hVal=m.my_prediction?m.my_prediction.home_score:0;
-    const aVal=m.my_prediction?m.my_prediction.away_score:0;
+    const hVal=m.my_prediction?m.my_prediction.home_score:'';
+    const aVal=m.my_prediction?m.my_prediction.away_score:'';
     pred=`<div class="predict-area" style="margin-top:4px">
       <div class="predict-label">${hasExisting?'✏️ Изменить прогноз (до старта матча)':'Твой прогноз на счёт'}</div>
       <div class="predict-row">
-        <input class="score-input ${hasExisting?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExisting?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
         <span class="score-colon ${hasExisting?'score-done-sep':''}">:</span>
-        <input class="score-input ${hasExisting?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExisting?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThis?'true':'false'})">${hasExisting?'Изменить':'Поставить'}</button>
         ${vbUsedOnThis?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк поставлен на этот матч">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:'') }
       </div></div>`;
   } else if(m.status==='grace'){
     // В грейс-период можно и ставить и менять прогноз
     const hasExistingGrace=!!m.my_prediction;
-    const hValG=m.my_prediction?m.my_prediction.home_score:0;
-    const aValG=m.my_prediction?m.my_prediction.away_score:0;
+    const hValG=m.my_prediction?m.my_prediction.home_score:'';
+    const aValG=m.my_prediction?m.my_prediction.away_score:'';
     const vbUsedOnThisG=m.my_prediction?.is_vabank;
     pred=`<div class="predict-area" style="margin-top:4px">
       <div class="predict-label" style="color:var(--green)">⚡ ${hasExistingGrace?'Можно изменить ещё 1 минуту!':'Последний шанс поставить!'}</div>
       <div class="predict-row">
-        <input class="score-input ${hasExistingGrace?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hValG}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExistingGrace?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hValG}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
         <span class="score-colon ${hasExistingGrace?'score-done-sep':''}">:</span>
-        <input class="score-input ${hasExistingGrace?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aValG}" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExistingGrace?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aValG}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThisG?'true':'false'})">${hasExistingGrace?'Изменить':'Поставить'}</button>
         ${vbUsedOnThisG?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:'')}
       </div></div>`;
@@ -1159,9 +1199,11 @@ function renderMatch(m){
 async function submitPred(matchId,isVabank){
   if(isVabank&&state.vabankUsed){toast('Ва-банк уже использован!','err');return;}
   if(isVabank&&!confirm('🔥 Использовать ВА-БАНК?\n\nМожно только ОДИН РАЗ за весь турнир!\n\nТочный счёт = 9 очков\nИсход = 3 очка\nОшибка = 0 очков'))return;
-  const h=parseInt(document.getElementById(`h-${matchId}`).value);
-  const a=parseInt(document.getElementById(`a-${matchId}`).value);
-  if(isNaN(h)||isNaN(a)||h<0||a<0){toast('Введи счёт','err');return;}
+  const hVal=document.getElementById(`h-${matchId}`).value;
+  const aVal=document.getElementById(`a-${matchId}`).value;
+  if(hVal===''||aVal===''){toast('Введи счёт для обеих команд','err');return;}
+  const h=parseInt(hVal); const a=parseInt(aVal);
+  if(isNaN(h)||isNaN(a)||h<0||a<0){toast('Введи корректный счёт','err');return;}
   try{
     await api(`/api/predict/${matchId}`,{method:'POST',body:JSON.stringify({token:state.token,home_score:h,away_score:a,is_vabank:isVabank})});
     if(isVabank){state.vabankUsed=true;toast('🔥 Ва-банк поставлен!');}
@@ -1319,11 +1361,16 @@ function renderLeaderboard(){
 async function loadRules(){
   try{
     const lb = await api('/api/leaderboard');
+    const settings = await api('/api/tournament-settings');
     const n = lb.length;
-    const fund = n * 15000;
-    const p1 = Math.round(fund * 0.60).toLocaleString('ru');
-    const p2 = Math.round(fund * 0.30).toLocaleString('ru');
-    const p3 = Math.round(fund * 0.10).toLocaleString('ru');
+    const fee = settings.entry_fee || 15000;
+    const fund = n * fee;
+    const prizeConf = (settings.prize_config||'60,30,10').split(',').map(p=>parseFloat(p.trim()));
+    const isPercent = prizeConf.every(p=>p<=100);
+    const prizes = prizeConf.map(p=> isPercent ? Math.round(fund*p/100) : parseInt(p));
+    const p1 = (prizes[0]||0).toLocaleString('ru');
+    const p2 = (prizes[1]||0).toLocaleString('ru');
+    const p3 = (prizes[2]||0).toLocaleString('ru');
     const fundStr = fund.toLocaleString('ru');
 
     // Update subtitle
@@ -1336,25 +1383,20 @@ async function loadRules(){
 
     // Update prize fund with roubles
     const prize = document.getElementById('rules-prize-fund');
-    if(prize) prize.innerHTML = `
-      <p style="margin-bottom:12px;color:var(--text2)">Общий призовой фонд: <strong style="font-size:18px;color:var(--navy)">${fundStr} ₽</strong></p>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-        <div class="rule-pt" style="border-top:3px solid #f0c84a">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">🥇 1 МЕСТО</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">60%</div>
-          <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p1} ₽</div>
-        </div>
-        <div class="rule-pt" style="border-top:3px solid #9ca3af">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);margin-bottom:4px">🥈 2 МЕСТО</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">30%</div>
-          <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p2} ₽</div>
-        </div>
-        <div class="rule-pt" style="border-top:3px solid #cd7f32">
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#cd7f32;margin-bottom:4px">🥉 3 МЕСТО</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">10%</div>
-          <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${p3} ₽</div>
-        </div>
-      </div>`;
+    if(prize){
+      const medals2=['🥇','🥈','🥉','4️⃣','5️⃣'];
+      const colors=['#f0c84a','#9ca3af','#cd7f32','#6b7280','#6b7280'];
+      const pLabels=isPercent ? prizeConf.map(p=>p+'%') : prizeConf.map((_,i)=>`Место ${i+1}`);
+      const cols = prizes.length <= 3 ? '1fr '.repeat(prizes.length).trim() : 'repeat(auto-fit,minmax(100px,1fr))';
+      prize.innerHTML = `
+        <p style="margin-bottom:12px;color:var(--text2)">Общий призовой фонд при ${n} участниках: <strong style="font-size:18px;color:var(--navy)">${fundStr} ₽</strong></p>
+        <div style="display:grid;grid-template-columns:${cols};gap:10px">
+          ${prizes.map((amt,i)=>`<div class="rule-pt" style="border-top:3px solid ${colors[i]||'#6b7280'}">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:${colors[i]||'var(--muted)'};margin-bottom:4px">${medals2[i]||'•'} ${i+1} МЕСТО</div>
+            <div style="font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:var(--navy)">${pLabels[i]}</div>
+            <div style="font-size:15px;font-weight:700;color:var(--green);margin-top:4px">${amt.toLocaleString('ru')} ₽</div>
+          </div>`).join('')}
+        </div>`;}
   }catch(e){
     const sub = document.getElementById('rules-subtitle');
     if(sub) sub.textContent = 'Турнир прогнозов · ЧМ 2026';
