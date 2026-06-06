@@ -733,19 +733,33 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
       <div id="import-banner-wrap"></div>
       <div class="admin-block" id="prize-settings-block">
         <h3>💰 Взнос и призовой фонд</h3>
-        <p class="hint">Настрой сумму взноса и распределение призов. Проценты вводи через запятую (например: 60,30,10). Сумма в % должна быть равна 100.</p>
-        <div class="form-row" style="align-items:center;flex-wrap:wrap">
-          <div style="flex:1;min-width:150px">
-            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;font-weight:600">Взнос на участника (₽)</label>
-            <input id="s-fee" type="number" min="0" placeholder="15000" style="width:100%">
+
+        <!-- Взнос -->
+        <div style="margin-bottom:20px">
+          <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;font-weight:600">Взнос на участника</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input id="s-fee" type="number" min="0" placeholder="15000" style="width:160px" oninput="updatePrizeUI()">
+            <span style="color:var(--muted);font-size:15px">₽</span>
           </div>
-          <div style="flex:2;min-width:200px">
-            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px;font-weight:600">Призовые места — % через запятую</label>
-            <input id="s-prizes" placeholder="60,30,10" style="width:100%">
-          </div>
-          <button class="btn btn-primary" onclick="savePrizeSettings()" style="align-self:flex-end">Сохранить</button>
         </div>
-        <div id="prize-preview" style="margin-top:12px;font-size:13px;color:var(--muted)"></div>
+
+        <!-- Призовые места -->
+        <div style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Призовые места</label>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-ghost btn-sm" onclick="addPrizePlace()" style="font-size:12px">+ Добавить место</button>
+              <button class="btn btn-ghost btn-sm" onclick="removePrizePlace()" style="font-size:12px;color:var(--red)">− Убрать</button>
+            </div>
+          </div>
+          <div id="prize-places" style="display:flex;flex-direction:column;gap:8px"></div>
+          <div id="prize-sum-warn" style="margin-top:8px;font-size:12px;display:none"></div>
+        </div>
+
+        <!-- Превью -->
+        <div id="prize-preview" style="background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;display:none"></div>
+
+        <button class="btn btn-primary" onclick="savePrizeSettings()">💾 Сохранить настройки</button>
       </div>
       <div class="admin-block">
         <h3>👥 Участники</h3>
@@ -1549,6 +1563,91 @@ function toggleArchive(header){
 }
 
 // ── ADMIN ──
+
+const PLACE_MEDALS=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣'];
+
+function getPrizePlaces(){
+  const inputs=document.querySelectorAll('[id^="prize-pct-"]');
+  if(!inputs.length) return [60,30,10];
+  return Array.from(inputs).map(el=>parseFloat(el.value)||0);
+}
+
+function savePlacesToUI(places){
+  const container=document.getElementById('prize-places');
+  if(!container) return;
+  container.innerHTML=places.map((pct,i)=>`
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px;width:28px;text-align:center">${PLACE_MEDALS[i]||'•'}</span>
+      <span style="font-size:13px;color:var(--muted);width:60px">${i+1} место</span>
+      <input type="number" min="1" max="100" value="${pct}" id="prize-pct-${i}" oninput="updatePrizeUI()" style="width:80px;text-align:center">
+      <span style="color:var(--muted)">%</span>
+      <span id="prize-amt-${i}" style="font-size:13px;font-weight:700;color:var(--green);min-width:100px"></span>
+    </div>`).join('');
+  updatePrizeUI();
+}
+
+function renderPrizePlaces(){ savePlacesToUI([60,30,10]); }
+
+function addPrizePlace(){
+  const places=getPrizePlaces();
+  if(places.length>=7){toast('Максимум 7 мест','err');return;}
+  places.push(0);
+  savePlacesToUI(places);
+}
+
+function removePrizePlace(){
+  const places=getPrizePlaces();
+  if(places.length<=1){toast('Минимум 1 место','err');return;}
+  places.pop();
+  savePlacesToUI(places);
+}
+
+function updatePrizeUI(){
+  const fee=parseInt(document.getElementById('s-fee')?.value)||15000;
+  const n=_lbRows.length||5;
+  const fund=fee*n;
+  const places=getPrizePlaces();
+  const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
+  places.forEach((pct,i)=>{
+    const el=document.getElementById(`prize-amt-${i}`);
+    if(el) el.textContent=Math.round(fund*pct/100).toLocaleString('ru')+' ₽';
+  });
+  const warn=document.getElementById('prize-sum-warn');
+  if(warn){
+    if(Math.abs(total-100)>0.1){
+      warn.style.display='block';
+      const diff=Math.round((total-100)*10)/10;
+      warn.innerHTML=`⚠️ Сумма = <strong>${total}%</strong> (нужно 100%). ${diff>0?`Убери ${diff}%`:`Добавь ${Math.abs(diff)}%`}`;
+      warn.style.color='var(--red)';
+    } else {
+      warn.style.display='none';
+    }
+  }
+  const preview=document.getElementById('prize-preview');
+  if(preview && Math.abs(total-100)<=0.1){
+    preview.style.display='block';
+    preview.innerHTML=`<strong>Призовой фонд при ${n} участниках: ${fund.toLocaleString('ru')} ₽</strong>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+        ${places.map((pct,i)=>`<span>${PLACE_MEDALS[i]} <strong>${Math.round(fund*pct/100).toLocaleString('ru')} ₽</strong></span>`).join('')}
+      </div>`;
+  }
+}
+
+async function savePrizeSettings(){
+  const fee=parseInt(document.getElementById('s-fee').value)||15000;
+  const places=getPrizePlaces();
+  const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
+  if(Math.abs(total-100)>0.1){toast(`Сумма % = ${total}, должно быть 100`,'err');return;}
+  const res=await fetch('/api/admin/tournament-settings',{
+    method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body:JSON.stringify({entry_fee:fee,prize_config:places.join(',')})
+  });
+  if(res.ok) toast('💾 Настройки сохранены!','ok');
+  else toast('Ошибка','err');
+}
+
+function updatePrizePreview(){}
+
 async function loadAdmin(){
   // Показать баннер импорта если матчей нет
   try{
@@ -1564,6 +1663,17 @@ async function loadAdmin(){
       banner.innerHTML='';
     }
   }catch(e){}
+
+  // Загрузить настройки призового фонда
+  try{
+    const s = await api('/api/tournament-settings');
+    const fee = s.entry_fee || 15000;
+    const feeEl = document.getElementById('s-fee');
+    if(feeEl) feeEl.value = fee;
+    const places = (s.prize_config||'60,30,10').split(',').map(p=>parseFloat(p.trim()));
+    savePlacesToUI(places);
+  }catch(e){ renderPrizePlaces(); }
+
   await loadPlayersTable();
   await loadAdminMatches();
 }
