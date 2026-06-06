@@ -549,15 +549,80 @@ def delete_match(match_id: int):
     return {"ok":True}
 
 @app.post("/api/admin/matches/{match_id}/result", dependencies=[Depends(require_admin)])
-def set_result(match_id: int, body: ResultIn):
+async def set_result(match_id: int, body: ResultIn):
     with get_db() as db:
         db.execute("UPDATE matches SET home_score=?,away_score=?,status='finished' WHERE id=?",
                   (body.home_score,body.away_score,match_id))
-        preds = db.execute("SELECT id,home_score,away_score,is_vabank FROM predictions WHERE match_id=?", (match_id,)).fetchall()
+        preds = db.execute("SELECT id,home_score,away_score,is_vabank,player_id FROM predictions WHERE match_id=?", (match_id,)).fetchall()
         for p in preds:
             pts = calc_points(p["home_score"],p["away_score"],body.home_score,body.away_score,bool(p["is_vabank"]))
             db.execute("UPDATE predictions SET points=? WHERE id=?", (pts,p["id"]))
+    # Рассылка результатов после матча
+    asyncio.create_task(broadcast_match_result(match_id, body.home_score, body.away_score))
     return {"ok":True}
+
+async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
+    """Рассылает итоги матча всем участникам в Telegram."""
+    with get_db() as db:
+        match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
+        preds = db.execute("""
+            SELECT pl.name, pl.telegram_chat_id, p.home_score, p.away_score, p.points, p.is_vabank
+            FROM predictions p JOIN players pl ON p.player_id=pl.id
+            WHERE p.match_id=? ORDER BY p.points DESC
+        """, (match_id,)).fetchall()
+        all_players = db.execute("SELECT id, name, telegram_chat_id FROM players").fetchall()
+        # Общий рейтинг после матча
+        standings = db.execute("""
+            SELECT pl.name,
+                   COALESCE(SUM(p.points),0) as total
+            FROM players pl
+            LEFT JOIN predictions p ON pl.id=p.player_id
+            GROUP BY pl.id ORDER BY total DESC
+        """).fetchall()
+    if not match:
+        return
+
+    home = team_with_flag(match['home_team'])
+    away = team_with_flag(match['away_team'])
+    medals = ['🥇','🥈','🥉']
+    pts_labels = {3:'🎯 Точный счёт!', 9:'🎯🔥 Точный счёт (ва-банк)!', 1:'✅ Исход угадан', 3:'✅🔥 Исход (ва-банк)', 0:'❌ Мимо'}
+
+    def pts_label(pts, is_vb):
+        if pts >= 9: return '🎯🔥 Точный счёт (ва-банк)!'
+        if pts >= 3 and not is_vb: return '🎯 Точный счёт!'
+        if pts == 3 and is_vb: return '✅🔥 Исход (ва-банк)'
+        if pts == 1: return '✅ Исход угадан'
+        return '❌ Мимо'
+
+    # Формируем сообщение
+    lines = [
+        f"🏁 <b>Матч завершён!</b>",
+        f"⚽ {home} <b>{real_home}:{real_away}</b> {away}\n",
+        f"📊 <b>Итоги матча:</b>\n"
+    ]
+
+    # Прогнозы участников
+    pred_map = {p["name"]: p for p in preds}
+    for pl in all_players:
+        p = pred_map.get(pl["name"])
+        if p:
+            vb = " 🔥" if p["is_vabank"] else ""
+            label = pts_label(p["points"], bool(p["is_vabank"]))
+            lines.append(f"• <b>{pl['name']}</b>{vb}: {p['home_score']}:{p['away_score']} → <b>+{p['points']} очк.</b> {label}")
+        else:
+            lines.append(f"• <b>{pl['name']}</b>: 😴 нет прогноза → 0 очк.")
+
+    # Таблица лидеров после матча
+    lines.append(f"\n🏆 <b>Таблица после матча:</b>\n")
+    for i, r in enumerate(standings):
+        medal = medals[i] if i < 3 else f"{i+1}."
+        lines.append(f"{medal} {r['name']} — <b>{r['total']} очк.</b>")
+
+    text = "\n".join(lines)
+    tasks = [send_telegram(str(pl["telegram_chat_id"]), text)
+             for pl in all_players if pl["telegram_chat_id"]]
+    if tasks:
+        await asyncio.gather(*tasks)
 
 @app.get("/api/admin/matches", dependencies=[Depends(require_admin)])
 def admin_matches():
