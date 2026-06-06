@@ -570,6 +570,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
     </div>
     <div class="sh-right">
       <strong id="user-name2"></strong>
+      <button class="btn btn-ghost btn-sm" id="theme-btn" onclick="toggleTheme()" title="Переключить тему">🌙</button>
       <button class="btn btn-ghost btn-sm" onclick="logout()">Выйти</button>
     </div>
   </header>
@@ -581,9 +582,6 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
     <div class="tab" onclick="showTab('rules')">Правила</div>
     <div class="tab" id="winners-tab" style="display:none" onclick="showTab('winners')">🏆 Победители</div>
     <div class="tab" id="admin-tab" style="display:none" onclick="showTab('admin')">⚙ Админ</div>
-    <div style="margin-left:auto;display:flex;align-items:center;padding:0 8px">
-      <button class="btn btn-ghost btn-sm" id="theme-btn2" onclick="toggleTheme()" title="Переключить тему" style="font-size:16px;padding:4px 10px;border:none">🌙</button>
-    </div>
   </nav>
   <main>
     <div id="section-matches" class="section active">
@@ -1663,13 +1661,15 @@ function toggleTheme(){
   const isDark = document.body.classList.toggle('dark-theme');
   localStorage.setItem('theme', isDark ? 'dark' : 'light');
   const icon = isDark ? '☀️' : '🌙';
-  ['theme-btn','theme-btn2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent=icon;});
+  const btn = document.getElementById('theme-btn');
+  if(btn) btn.textContent = icon;
 }
 function applyTheme(){
   const saved = localStorage.getItem('theme');
   if(saved === 'dark'){
     document.body.classList.add('dark-theme');
-    ['theme-btn','theme-btn2'].forEach(id=>{const b=document.getElementById(id);if(b)b.textContent='☀️';});
+    const btn = document.getElementById('theme-btn');
+    if(btn) btn.textContent = '☀️';
   }
 }
 
