@@ -225,9 +225,9 @@ main{padding:22px 20px;max-width:800px;margin:0 auto;}
 .match-card.finished-card .team-name{color:#94a3b8;}
 .match-card.finished-card .vs{color:#cbd5e1;}
 .match-card.finished-card .flag-img{opacity:0.6;}
-body.dark-theme .match-card.finished-card{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06);}
-body.dark-theme .match-card.finished-card .team-name{color:#475569;}
-body.dark-theme .match-card.finished-card .vs{color:#334155;}
+body.dark-theme .match-card.finished-card{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.14);}
+body.dark-theme .match-card.finished-card .team-name{color:#94a3b8;}
+body.dark-theme .match-card.finished-card .vs{color:#64748b;}
 
 
 
@@ -283,9 +283,9 @@ body.dark-theme .score-input.score-done{background:rgba(22,163,74,0.12);border-c
 .pts-1{background:var(--gold-light);color:var(--gold);border:1px solid rgba(184,134,11,0.2);}
 .pts-0{background:var(--bg);color:var(--muted);border:1px solid var(--border);}
 .preds-toggle{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
-.pred-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.pred-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;}
 .pred-row:last-child{border-bottom:none;}
-.pred-score{font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:1px;color:var(--navy);}
+.pred-score{font-family:'Oswald',sans-serif;font-size:16px;letter-spacing:1px;color:var(--navy);text-align:right;}
 .arrow{display:inline-block;transition:transform .2s;font-size:10px;margin-left:3px;}
 .arrow.open{transform:rotate(180deg);}
 
