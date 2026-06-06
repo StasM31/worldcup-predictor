@@ -1193,9 +1193,50 @@ function renderMatch(m){
     ${result}${pred}${predsSection}
   </div>`;
 }
+function showVabankConfirm(){
+  return new Promise(resolve=>{
+    const modal=document.createElement('div');
+    modal.className='modal-overlay';
+    modal.innerHTML=`<div class="modal" style="max-width:360px">
+      <div style="background:linear-gradient(135deg,#7f1d1d,#dc2626);padding:28px 24px;text-align:center;border-radius:16px 16px 0 0">
+        <div style="font-size:48px;margin-bottom:8px">🔥</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:24px;font-weight:700;color:#fff;letter-spacing:2px">ВА-БАНК!</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px">Один раз за весь турнир</div>
+      </div>
+      <div class="modal-body" style="padding:20px 24px">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px">
+            <span>🎯 Точный счёт</span><strong style="color:var(--red)">+9 очков</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px">
+            <span>✅ Исход угадан</span><strong style="color:var(--gold2)">+3 очка</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px">
+            <span>❌ Промах</span><strong style="color:var(--muted)">0 очков</strong>
+          </div>
+        </div>
+        <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:20px">Ты уверен? Отменить это действие нельзя.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button id="vb-cancel" style="padding:12px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--text);font-size:14px;font-weight:600;cursor:pointer;font-family:'Manrope',sans-serif">Отмена</button>
+          <button id="vb-confirm" style="padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif">🔥 Да, ва-банк!</button>
+        </div>
+      </div>
+    </div>`;
+    modal.addEventListener('click',e=>{
+      if(e.target===modal){modal.remove();resolve(false);}
+    });
+    modal.querySelector('#vb-cancel').addEventListener('click',()=>{modal.remove();resolve(false);});
+    modal.querySelector('#vb-confirm').addEventListener('click',()=>{modal.remove();resolve(true);});
+    document.body.appendChild(modal);
+  });
+}
+
 async function submitPred(matchId,isVabank){
   if(isVabank&&state.vabankUsed){toast('Ва-банк уже использован!','err');return;}
-  if(isVabank&&!confirm('🔥 Использовать ВА-БАНК?\n\nМожно только ОДИН РАЗ за весь турнир!\n\nТочный счёт = 9 очков\nИсход = 3 очка\nОшибка = 0 очков'))return;
+  if(isVabank){
+    const ok = await showVabankConfirm();
+    if(!ok) return;
+  }
   const hVal=document.getElementById(`h-${matchId}`).value;
   const aVal=document.getElementById(`a-${matchId}`).value;
   if(hVal===''||aVal===''){toast('Введи счёт для обеих команд','err');return;}
