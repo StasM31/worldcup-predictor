@@ -79,6 +79,12 @@ def init_db():
             id INTEGER PRIMARY KEY CHECK (id=1),
             champion TEXT, finalist1 TEXT, finalist2 TEXT, top_scorer TEXT
         );
+        CREATE TABLE IF NOT EXISTS tournament_settings (
+            id INTEGER PRIMARY KEY CHECK (id=1),
+            entry_fee INTEGER DEFAULT 15000,
+            prize_config TEXT DEFAULT '60,30,10'
+        );
+        INSERT OR IGNORE INTO tournament_settings (id) VALUES (1);
         """)
         try:
             db.execute("ALTER TABLE predictions ADD COLUMN is_vabank INTEGER DEFAULT 0")
@@ -584,6 +590,26 @@ def set_tournament_result(body: TournamentResultIn):
             db.execute("UPDATE tournament_predictions SET champion_pts=?,finalist_pts=?,scorer_pts=? WHERE player_id=?",
                       (c,f,third_pts,tp["player_id"]))
     return {"ok":True}
+
+@app.get("/api/tournament-settings")
+def get_tournament_settings(token: str):
+    get_player_by_token(token)
+    with get_db() as db:
+        row = db.execute("SELECT * FROM tournament_settings WHERE id=1").fetchone()
+    return dict(row) if row else {"entry_fee": 15000, "prize_config": "60,30,10"}
+
+class TournamentSettingsIn(BaseModel):
+    entry_fee: int
+    prize_config: str  # например "60,30,10" или "45000,22500,7500" (рубли если > 100)
+
+@app.post("/api/admin/tournament-settings", dependencies=[Depends(require_admin)])
+def save_tournament_settings(body: TournamentSettingsIn):
+    with get_db() as db:
+        db.execute("""INSERT INTO tournament_settings (id, entry_fee, prize_config)
+            VALUES (1, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET entry_fee=excluded.entry_fee, prize_config=excluded.prize_config""",
+            (body.entry_fee, body.prize_config))
+    return {"ok": True}
 
 @app.post("/api/telegram/webhook")
 async def telegram_webhook(update: dict):
