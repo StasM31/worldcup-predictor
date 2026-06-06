@@ -1604,7 +1604,9 @@ function removePrizePlace(){
 
 function updatePrizeUI(){
   const fee=parseInt(document.getElementById('s-fee')?.value)||15000;
-  const n=_lbRows.length||5;
+  // Считаем участников из таблицы в админке
+  const playerRows=document.querySelectorAll('#players-table tr');
+  const n=playerRows.length>0?playerRows.length:(_lbRows.length||1);
   const fund=fee*n;
   const places=getPrizePlaces();
   const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
@@ -1665,6 +1667,7 @@ async function loadAdmin(){
   }catch(e){}
 
   // Загрузить настройки призового фонда
+  await loadPlayersTable();
   try{
     const s = await api('/api/tournament-settings');
     const fee = s.entry_fee || 15000;
@@ -1673,8 +1676,6 @@ async function loadAdmin(){
     const places = (s.prize_config||'60,30,10').split(',').map(p=>parseFloat(p.trim()));
     savePlacesToUI(places);
   }catch(e){ renderPrizePlaces(); }
-
-  await loadPlayersTable();
   await loadAdminMatches();
 }
 
