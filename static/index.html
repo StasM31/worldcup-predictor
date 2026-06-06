@@ -1742,12 +1742,12 @@ setInterval(updateTimers, 1000);
 
 // ── Автообновление ──
 let _autoUpdateInterval = null;
-let _autoUpdateCountdown = 30;
+let _autoUpdateCountdown = 60;
 let _lastTab = 'matches';
 
 function startAutoUpdate(){
   if(_autoUpdateInterval) clearInterval(_autoUpdateInterval);
-  _autoUpdateCountdown = 30;
+  _autoUpdateCountdown = 60;
   updateAutoUpdateBar();
   _autoUpdateInterval = setInterval(()=>{
     _autoUpdateCountdown--;
@@ -1755,7 +1755,7 @@ function startAutoUpdate(){
     if(_autoUpdateCountdown <= 0){
       // Если есть активные матчи — обновляем чаще (каждые 10с)
       const hasActive = document.querySelector('.badge.b-live, .badge.b-grace');
-      _autoUpdateCountdown = hasActive ? 10 : 30;
+      _autoUpdateCountdown = 60;
       if(_lastTab==='matches') loadMatches();
       else if(_lastTab==='leaderboard') loadLeaderboard();
     }
