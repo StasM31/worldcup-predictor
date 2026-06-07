@@ -199,6 +199,52 @@ async def grace_period_end(match_id):
             db.execute("UPDATE matches SET status='live' WHERE id=?", (match_id,))
     await broadcast_predictions(match_id)
     asyncio.create_task(auto_finish_match(match_id))
+    # Если это первый матч — рассылаем долгосрочные прогнозы
+    with get_db() as db:
+        live_count = db.execute(
+            "SELECT COUNT(*) FROM matches WHERE status IN ('live','ended','finished')"
+        ).fetchone()[0]
+    if live_count == 1:
+        asyncio.create_task(send_longterm_after_start())
+
+async def send_longterm_after_start():
+    """Отправляет долгосрочные прогнозы сразу после старта первого матча."""
+    await asyncio.sleep(5)
+    with get_db() as db:
+        players = db.execute("SELECT * FROM players").fetchall()
+        preds = db.execute("""
+            SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer
+            FROM tournament_predictions tp
+            JOIN players pl ON tp.player_id = pl.id
+            ORDER BY pl.name
+        """).fetchall()
+    if not preds:
+        return
+    lines = [
+        "🌍 <b>Долгосрочные прогнозы участников</b>",
+        "Чемпионат мира 2026 · Ставки закрыты",
+        "",
+        "🥇 <b>Чемпион:</b>"
+    ]
+    for p in preds:
+        f = get_flag(p['champion']) if p['champion'] else ''
+        lines.append(f"  • {p['name']} → {f} {p['champion'] or '—'}")
+    lines.extend(["", "🥈 <b>Финалисты:</b>"])
+    for p in preds:
+        f1 = get_flag(p['finalist1']) if p['finalist1'] else ''
+        f2 = get_flag(p['finalist2']) if p['finalist2'] else ''
+        fin1 = f"{f1} {p['finalist1']}" if p['finalist1'] else '—'
+        fin2 = f"{f2} {p['finalist2']}" if p['finalist2'] else '—'
+        lines.append(f"  • {p['name']} → {fin1} / {fin2}")
+    lines.extend(["", "🥉 <b>3-е место:</b>"])
+    for p in preds:
+        f = get_flag(p['top_scorer']) if p['top_scorer'] else ''
+        lines.append(f"  • {p['name']} → {f} {p['top_scorer'] or '—'}")
+    text = "\n".join(lines)
+    tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players if pl["telegram_chat_id"]]
+    if tasks:
+        await asyncio.gather(*tasks)
+    print("Long-term predictions broadcast sent!")
 
 async def auto_finish_match(match_id):
     await asyncio.sleep(MATCH_DURATION_SECONDS - GRACE_SECONDS)
@@ -262,14 +308,18 @@ async def send_welcome_broadcast():
         players = db.execute("SELECT * FROM players").fetchall()
         settings = db.execute("SELECT * FROM tournament_settings WHERE id=1").fetchone()
         first = db.execute("SELECT * FROM matches ORDER BY match_time ASC LIMIT 1").fetchone()
+        # Закрываем приём долгосрочных прогнозов — помечаем в настройках
+        db.execute("UPDATE tournament_settings SET hide_days=hide_days WHERE id=1")  # no-op, tournament_started tracked via matches
     n = len(players)
     fee = settings["entry_fee"] if settings else 15000
     fund = n * fee
     prize_conf = (settings["prize_config"] if settings else "60,30,10").split(",")
-    prizes = [f"{PLACE_MEDALS[i]} {int(fund*float(p)/100):,} ₽".replace(",","  ") for i,p in enumerate(prize_conf[:3])]
+    prizes = [f"{PLACE_MEDALS[i]} {int(fund*float(p)/100):,} ₽".replace(",", " ") for i,p in enumerate(prize_conf[:3])]
     home = team_with_flag(first["home_team"]) if first else ""
     away = team_with_flag(first["away_team"]) if first else ""
-    lines = [
+
+    # Сообщение 1 — Приветственное
+    msg1_lines = [
         "🏆 <b>Турнир прогнозов ЧМ 2026 начинается!</b>",
         "",
         f"👥 Участников: <b>{n}</b>",
@@ -281,15 +331,65 @@ async def send_welcome_broadcast():
         f"⚽ Первый матч через <b>1 час</b>: {home} vs {away}",
         "",
         "🌍 <b>Не забудь сделать долгосрочный прогноз!</b>",
-        "Зайди на вкладку «Ставка на финал» и угадай чемпиона, финалистов и 3-е место — это можно сделать только до начала первого матча!",
+        "Зайди на вкладку «Ставка на финал» — это можно сделать только в течение следующего часа!",
         "",
         "🍀 Удачи всем! Пусть победит сильнейший!"
     ]
+    text1 = "\n".join(msg1_lines)
+
+    tasks = [send_telegram(str(pl["telegram_chat_id"]), text1) for pl in players if pl["telegram_chat_id"]]
+    if tasks:
+        await asyncio.gather(*tasks)
+    print("Welcome broadcast sent!")
+
+async def send_longterm_broadcast(players):
+    """Отправляет долгосрочные прогнозы за 5 минут до первого матча."""
+    await asyncio.sleep(55 * 60)  # ждём 55 минут
+    with get_db() as db:
+        preds = db.execute("""
+            SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer
+            FROM tournament_predictions tp
+            JOIN players pl ON tp.player_id = pl.id
+            ORDER BY pl.name
+        """).fetchall()
+
+    if not preds:
+        return
+
+    def flag(team):
+        return get_flag(team) if team else ''
+
+    lines = [
+        "🌍 <b>Долгосрочные прогнозы участников</b>",
+        "Чемпионат мира 2026 · Ставки закрыты",
+        "",
+    ]
+
+    lines.append("🥇 <b>Чемпион:</b>")
+    for p in preds:
+        f = flag(p['champion'])
+        lines.append(f"  • {p['name']} → {f} {p['champion'] or '—'}")
+
+    lines.append("")
+    lines.append("🥈 <b>Финалисты:</b>")
+    for p in preds:
+        f1 = flag(p['finalist1'])
+        f2 = flag(p['finalist2'])
+        fin1 = f"{f1} {p['finalist1']}" if p['finalist1'] else '—'
+        fin2 = f"{f2} {p['finalist2']}" if p['finalist2'] else '—'
+        lines.append(f"  • {p['name']} → {fin1} / {fin2}")
+
+    lines.append("")
+    lines.append("🥉 <b>3-е место:</b>")
+    for p in preds:
+        f = flag(p['top_scorer'])
+        lines.append(f"  • {p['name']} → {f} {p['top_scorer'] or '—'}")
+
     text = "\n".join(lines)
     tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players if pl["telegram_chat_id"]]
     if tasks:
         await asyncio.gather(*tasks)
-    print("Welcome broadcast sent!")
+    print("Long-term broadcast sent!")
 
 PLACE_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣']
 

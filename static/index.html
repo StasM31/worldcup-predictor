@@ -692,7 +692,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
           <li>Угадал финалиста (за каждого) → <strong style="color:var(--navy)">+5 очков</strong></li>
           <li>Угадал команду на 3-м месте → <strong style="color:var(--navy)">+5 очков</strong></li>
         </ul>
-        <p style="margin-top:10px;color:var(--muted)">Прогноз на турнир можно изменить до начала первого матча.</p>
+        <p style="margin-top:10px;color:var(--muted)">Прогноз на турнир принимается до начала первого матча.</p>
       </div>
 
       <!-- Основное время -->
@@ -1477,7 +1477,7 @@ async function loadTournament(){
 }
 async function saveTournamentPred(){
   const body={token:state.token,champion:document.getElementById('tc-champ').value.trim(),finalist1:document.getElementById('tc-fin1').value.trim(),finalist2:document.getElementById('tc-fin2').value.trim(),top_scorer:document.getElementById('tc-third').value.trim()};
-  try{await api('/api/tournament-prediction',{method:'POST',body:JSON.stringify(body)});toast('Прогноз сохранён! 🏆');loadTournament();}
+  try{await api('/api/tournament-prediction',{method:'POST',body:JSON.stringify(body)});toast('Прогноз сохранён! 🏆');loadTournament();}catch(e){toast(e.message||'Ошибка сохранения','err');}
   catch(e){toast(e.message,'err');}
 }
 
