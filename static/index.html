@@ -720,6 +720,10 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
             <div style="width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">!</div>
             <div><strong>Не забудь про ва-банк</strong><br><span style="color:var(--muted);font-size:13px">Один раз за весь турнир можно нажать <span style="background:#7f1d1d;color:#fca5a5;padding:1px 8px;border-radius:6px;font-size:11px">🔥 Ва-банк</span> вместо «Поставить» — очки утраиваются!</span></div>
           </div>
+          <div style="display:flex;align-items:flex-start;gap:12px;background:linear-gradient(135deg,#0a1628,#1a3a6e);border-radius:10px;padding:12px 14px;margin-top:4px">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--gold2);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">🏆</div>
+            <div><strong style="color:#fff">Не забудь про долгосрочный прогноз!</strong><br><span style="color:rgba(255,255,255,0.75);font-size:13px">Зайди на вкладку <strong style="color:var(--gold2)">«Ставка на финал»</strong> и угадай чемпиона, финалистов и команду на 3-м месте. Прогноз принимается только <strong style="color:var(--gold2)">до начала первого матча</strong> — потом закрывается навсегда!</span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -734,21 +738,34 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
       <div class="admin-block" id="prize-settings-block">
         <h3>💰 Взнос и призовой фонд</h3>
 
-        <!-- Взнос -->
-        <div style="margin-bottom:20px">
-          <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;font-weight:600">Взнос на участника</label>
-          <div style="display:flex;align-items:center;gap:10px">
-            <input id="s-fee" type="number" min="0" placeholder="15000" style="width:160px" oninput="updatePrizeUI()">
-            <span style="color:var(--muted);font-size:15px">₽</span>
+        <!-- Взнос и кол-во участников -->
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px">
+          <div>
+            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;font-weight:600">Взнос на участника</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input id="s-fee" type="number" min="0" placeholder="15000" style="width:130px" oninput="updatePrizeUI()">
+              <span style="color:var(--muted);font-size:15px">₽</span>
+            </div>
+          </div>
+          <div>
+            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;font-weight:600">Кол-во участников</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input id="s-players" type="number" min="1" max="100" placeholder="5" style="width:80px;text-align:center" oninput="updatePrizeUI()">
+              <span style="color:var(--muted);font-size:13px">чел.</span>
+            </div>
           </div>
         </div>
 
         <!-- Призовые места -->
         <div style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
             <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Призовые места</label>
-            <div style="display:flex;gap:6px">
-              <button class="btn btn-ghost btn-sm" onclick="addPrizePlace()" style="font-size:12px">+ Добавить место</button>
+            <div style="display:flex;gap:6px;align-items:center">
+              <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+                <button id="mode-pct" onclick="setPrizeMode('pct')" style="padding:5px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--navy);color:#fff">%</button>
+                <button id="mode-rub" onclick="setPrizeMode('rub')" style="padding:5px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--muted)">₽</button>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="addPrizePlace()" style="font-size:12px">+ Место</button>
               <button class="btn btn-ghost btn-sm" onclick="removePrizePlace()" style="font-size:12px;color:var(--red)">− Убрать</button>
             </div>
           </div>
@@ -989,7 +1006,7 @@ function showTgBanner(){
   const botLink = state.botUsername
     ? `https://t.me/${state.botUsername}?start=${state.token}`
     : '#';
-  wrap.innerHTML = `<div class="tg-connect-banner">
+  wrap.innerHTML = `<div class="tg-connect-banner" style="background:linear-gradient(135deg,#0088cc,#006aa3);border-radius:14px;padding:18px 22px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 8px 32px rgba(0,136,204,0.5);border:2px solid rgba(255,255,255,0.25)">
     <div class="tcb-left">
       <div class="tcb-icon">📲</div>
       <div class="tcb-text">
@@ -1282,10 +1299,24 @@ async function togglePreds(matchId,btn){
 }
 
 // ── TOURNAMENT ──
+function buildTeamSelect(id, selected, teams){
+  const opts = teams.map(t=>`<option value="${t}" ${t===selected?'selected':''}>${t}</option>`).join('');
+  return `<select id="${id}" style="width:100%;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;font-family:'Manrope',sans-serif">
+    <option value="">— Выбери сборную —</option>${opts}</select>`;
+}
+
 async function loadTournament(){
   try{
     const data=await api('/api/tournament-prediction');
     const allData=await api('/api/tournament-predictions-all');
+    // Собираем уникальные команды из матчей
+    let teams=[];
+    try{
+      const matches=await api('/api/matches');
+      const teamSet=new Set();
+      matches.forEach(m=>{if(m.home_team)teamSet.add(m.home_team);if(m.away_team)teamSet.add(m.away_team);});
+      teams=[...teamSet].sort((a,b)=>a.localeCompare(b,'ru'));
+    }catch(e){}
     const el=document.getElementById('tourn-content');
     const my=data.my_prediction, res=data.result;
     const started=allData.tournament_started;
@@ -1328,11 +1359,10 @@ async function loadTournament(){
       ? `<div class="tourn-card">
            <div class="tourn-head">📝 Мой прогноз на турнир</div>
            <div class="tourn-grid">
-             <div class="tourn-field"><label>🏆 Чемпион (+10 очков)</label><input id="tc-champ" value="${my?.champion||''}" placeholder="Название сборной"></div>
-   
-             <div class="tourn-field"><label>🥈 Финалист 1 (+5 очков)</label><input id="tc-fin1" value="${my?.finalist1||''}" placeholder="Название сборной"></div>
-             <div class="tourn-field"><label>🥈 Финалист 2 (+5 очков)</label><input id="tc-fin2" value="${my?.finalist2||''}" placeholder="Название сборной"></div>
-          <div class="tourn-field"><label>🥉 3-е место (+5 очков)</label><input id="tc-third" value="${my?.top_scorer||''}" placeholder="Название сборной"></div>
+             <div class="tourn-field"><label>🏆 Чемпион (+10 очков)</label>${buildTeamSelect('tc-champ', my?.champion||'', teams)}</div>
+             <div class="tourn-field"><label>🥈 Финалист 1 (+5 очков)</label>${buildTeamSelect('tc-fin1', my?.finalist1||'', teams)}</div>
+             <div class="tourn-field"><label>🥈 Финалист 2 (+5 очков)</label>${buildTeamSelect('tc-fin2', my?.finalist2||'', teams)}</div>
+             <div class="tourn-field"><label>🥉 3-е место (+5 очков)</label>${buildTeamSelect('tc-third', my?.top_scorer||'', teams)}</div>
            </div>
            ${bonusHtml}
            <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="saveTournamentPred()">💾 Сохранить прогноз</button>
@@ -1565,6 +1595,19 @@ function toggleArchive(header){
 // ── ADMIN ──
 
 const PLACE_MEDALS=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣'];
+let _prizeMode = 'pct'; // 'pct' = проценты, 'rub' = рубли
+
+function setPrizeMode(mode){
+  _prizeMode = mode;
+  // Update toggle buttons
+  document.getElementById('mode-pct').style.background = mode==='pct'?'var(--navy)':'transparent';
+  document.getElementById('mode-pct').style.color = mode==='pct'?'#fff':'var(--muted)';
+  document.getElementById('mode-rub').style.background = mode==='rub'?'var(--navy)':'transparent';
+  document.getElementById('mode-rub').style.color = mode==='rub'?'#fff':'var(--muted)';
+  // Re-render places with new mode
+  const places = getPrizePlaces();
+  savePlacesToUI(places);
+}
 
 function getPrizePlaces(){
   const inputs=document.querySelectorAll('[id^="prize-pct-"]');
@@ -1575,13 +1618,14 @@ function getPrizePlaces(){
 function savePlacesToUI(places){
   const container=document.getElementById('prize-places');
   if(!container) return;
-  container.innerHTML=places.map((pct,i)=>`
+  const isRub = _prizeMode==='rub';
+  container.innerHTML=places.map((val,i)=>`
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-size:18px;width:28px;text-align:center">${PLACE_MEDALS[i]||'•'}</span>
       <span style="font-size:13px;color:var(--muted);width:60px">${i+1} место</span>
-      <input type="number" min="1" max="100" value="${pct}" id="prize-pct-${i}" oninput="updatePrizeUI()" style="width:80px;text-align:center">
-      <span style="color:var(--muted)">%</span>
-      <span id="prize-amt-${i}" style="font-size:13px;font-weight:700;color:var(--green);min-width:100px"></span>
+      <input type="number" min="0" ${isRub?'':'max="100"'} value="${val}" id="prize-pct-${i}" oninput="updatePrizeUI()" style="width:100px;text-align:center">
+      <span style="color:var(--muted);min-width:14px">${isRub?'₽':'%'}</span>
+      <span id="prize-amt-${i}" style="font-size:13px;font-weight:700;color:var(--green);min-width:90px"></span>
     </div>`).join('');
   updatePrizeUI();
 }
@@ -1604,34 +1648,65 @@ function removePrizePlace(){
 
 function updatePrizeUI(){
   const fee=parseInt(document.getElementById('s-fee')?.value)||15000;
-  // Считаем участников из таблицы в админке
+  // Кол-во участников: из ручного поля или из таблицы
+  const manualN=parseInt(document.getElementById('s-players')?.value);
   const playerRows=document.querySelectorAll('#players-table tr');
-  const n=playerRows.length>0?playerRows.length:(_lbRows.length||1);
+  const n=manualN>0?manualN:(playerRows.length>0?playerRows.length:Math.max(_lbRows.length,1));
   const fund=fee*n;
   const places=getPrizePlaces();
-  const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
-  places.forEach((pct,i)=>{
-    const el=document.getElementById(`prize-amt-${i}`);
-    if(el) el.textContent=Math.round(fund*pct/100).toLocaleString('ru')+' ₽';
-  });
+  const isRub=_prizeMode==='rub';
   const warn=document.getElementById('prize-sum-warn');
-  if(warn){
-    if(Math.abs(total-100)>0.1){
-      warn.style.display='block';
-      const diff=Math.round((total-100)*10)/10;
-      warn.innerHTML=`⚠️ Сумма = <strong>${total}%</strong> (нужно 100%). ${diff>0?`Убери ${diff}%`:`Добавь ${Math.abs(diff)}%`}`;
-      warn.style.color='var(--red)';
-    } else {
-      warn.style.display='none';
-    }
-  }
   const preview=document.getElementById('prize-preview');
-  if(preview && Math.abs(total-100)<=0.1){
-    preview.style.display='block';
-    preview.innerHTML=`<strong>Призовой фонд при ${n} участниках: ${fund.toLocaleString('ru')} ₽</strong>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
-        ${places.map((pct,i)=>`<span>${PLACE_MEDALS[i]} <strong>${Math.round(fund*pct/100).toLocaleString('ru')} ₽</strong></span>`).join('')}
-      </div>`;
+
+  if(isRub){
+    // Режим рублей
+    const totalRub=places.reduce((s,p)=>s+p,0);
+    places.forEach((amt,i)=>{
+      const el=document.getElementById(`prize-amt-${i}`);
+      const pct=fund>0?Math.round(amt/fund*1000)/10:0;
+      if(el) el.textContent=`(${pct}%)`;
+    });
+    if(warn){
+      if(totalRub>fund){
+        warn.style.display='block';
+        warn.innerHTML=`⚠️ Сумма призов <strong>${totalRub.toLocaleString('ru')} ₽</strong> превышает банк <strong>${fund.toLocaleString('ru')} ₽</strong>`;
+        warn.style.color='var(--red)';
+      } else if(totalRub<fund){
+        warn.style.display='block';
+        const diff=fund-totalRub;
+        warn.innerHTML=`ℹ️ Нераспределено: <strong>${diff.toLocaleString('ru')} ₽</strong>`;
+        warn.style.color='var(--muted)';
+      } else { warn.style.display='none'; }
+    }
+    if(preview){
+      preview.style.display='block';
+      preview.innerHTML=`<strong>Призовой фонд при ${n} участниках: ${fund.toLocaleString('ru')} ₽</strong>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+          ${places.map((amt,i)=>`<span>${PLACE_MEDALS[i]} <strong>${amt.toLocaleString('ru')} ₽</strong></span>`).join('')}
+        </div>`;
+    }
+  } else {
+    // Режим процентов
+    const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
+    places.forEach((pct,i)=>{
+      const el=document.getElementById(`prize-amt-${i}`);
+      if(el) el.textContent=Math.round(fund*pct/100).toLocaleString('ru')+' ₽';
+    });
+    if(warn){
+      if(Math.abs(total-100)>0.1){
+        warn.style.display='block';
+        const diff=Math.round((total-100)*10)/10;
+        warn.innerHTML=`⚠️ Сумма = <strong>${total}%</strong> (нужно 100%). ${diff>0?`Убери ${diff}%`:`Добавь ${Math.abs(diff)}%`}`;
+        warn.style.color='var(--red)';
+      } else { warn.style.display='none'; }
+    }
+    if(preview && Math.abs(total-100)<=0.1){
+      preview.style.display='block';
+      preview.innerHTML=`<strong>Призовой фонд при ${n} участниках: ${fund.toLocaleString('ru')} ₽</strong>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+          ${places.map((pct,i)=>`<span>${PLACE_MEDALS[i]} <strong>${Math.round(fund*pct/100).toLocaleString('ru')} ₽</strong></span>`).join('')}
+        </div>`;
+    }
   }
 }
 
@@ -1673,6 +1748,10 @@ async function loadAdmin(){
     const fee = s.entry_fee || 15000;
     const feeEl = document.getElementById('s-fee');
     if(feeEl) feeEl.value = fee;
+    // Установить кол-во участников из таблицы
+    const pRows = document.querySelectorAll('#players-table tr');
+    const nEl = document.getElementById('s-players');
+    if(nEl && pRows.length>0) nEl.value = pRows.length;
     const places = (s.prize_config||'60,30,10').split(',').map(p=>parseFloat(p.trim()));
     savePlacesToUI(places);
   }catch(e){ renderPrizePlaces(); }

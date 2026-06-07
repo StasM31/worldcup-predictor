@@ -165,7 +165,7 @@ async def broadcast_predictions(match_id):
     pred_map = {p["name"]: p for p in preds}
     home = team_with_flag(match['home_team'])
     away = team_with_flag(match['away_team'])
-    lines = [f"⚽ <b>{home} vs {away}</b>\n🔮 Прогнозы:\n"]
+    lines = [f"⚽ <b>{home} vs {away}</b>\n"]
     for pl in all_players:
         p = pred_map.get(pl["name"])
         if p:
@@ -226,6 +226,66 @@ async def auto_start_scheduler():
             print(f"Scheduler error: {e}")
         await asyncio.sleep(30)
 
+async def welcome_broadcast_scheduler():
+    """За час до первого матча турнира отправляет приветственное сообщение."""
+    from datetime import timedelta
+    await asyncio.sleep(20)
+    sent = False
+    while True:
+        try:
+            if not sent:
+                now_msk = (datetime.now(timezone.utc)+timedelta(hours=3)).replace(tzinfo=None)
+                with get_db() as db:
+                    first = db.execute(
+                        "SELECT * FROM matches WHERE status='upcoming' ORDER BY match_time ASC LIMIT 1"
+                    ).fetchone()
+                if first:
+                    mt = parse_dt(first["match_time"])
+                    if mt:
+                        diff = (mt.replace(tzinfo=None) - now_msk).total_seconds()
+                        if 0 < diff <= 3600:  # за час до старта
+                            sent = True
+                            await send_welcome_broadcast()
+        except Exception as e:
+            print(f"Welcome scheduler error: {e}")
+        await asyncio.sleep(60)
+
+async def send_welcome_broadcast():
+    with get_db() as db:
+        players = db.execute("SELECT * FROM players").fetchall()
+        settings = db.execute("SELECT * FROM tournament_settings WHERE id=1").fetchone()
+        first = db.execute("SELECT * FROM matches ORDER BY match_time ASC LIMIT 1").fetchone()
+    n = len(players)
+    fee = settings["entry_fee"] if settings else 15000
+    fund = n * fee
+    prize_conf = (settings["prize_config"] if settings else "60,30,10").split(",")
+    prizes = [f"{PLACE_MEDALS[i]} {int(fund*float(p)/100):,} ₽".replace(",","  ") for i,p in enumerate(prize_conf[:3])]
+    home = team_with_flag(first["home_team"]) if first else ""
+    away = team_with_flag(first["away_team"]) if first else ""
+    lines = [
+        "🏆 <b>Турнир прогнозов ЧМ 2026 начинается!</b>",
+        "",
+        f"👥 Участников: <b>{n}</b>",
+        f"💰 Призовой фонд: <b>{fund:,} ₽</b>".replace(",", " "),
+        "",
+        "🎁 Распределение призов:",
+        *[f"  {p}" for p in prizes],
+        "",
+        f"⚽ Первый матч через <b>1 час</b>: {home} vs {away}",
+        "",
+        "🌍 <b>Не забудь сделать долгосрочный прогноз!</b>",
+        "Зайди на вкладку «Ставка на финал» и угадай чемпиона, финалистов и 3-е место — это можно сделать только до начала первого матча!",
+        "",
+        "🍀 Удачи всем! Пусть победит сильнейший!"
+    ]
+    text = "\n".join(lines)
+    tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players if pl["telegram_chat_id"]]
+    if tasks:
+        await asyncio.gather(*tasks)
+    print("Welcome broadcast sent!")
+
+PLACE_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣']
+
 async def daily_digest_scheduler():
     from datetime import timedelta
     await asyncio.sleep(10)
@@ -258,7 +318,7 @@ async def send_daily_digest():
     lines = [f"📊 <b>Таблица лидеров на {today_msk}</b>\n"]
     for i,r in enumerate(rows):
         medal = medals[i] if i<3 else f"{i+1}."
-        lines.append(f"{medal} <b>{r['name']}</b> — <b>{r['total_points']} очк.</b>  🎯{r['exact_hits'] or 0} ✅{r['outcome_hits'] or 0}")
+        lines.append(f"{medal} <b>{r['name']}</b> — <b>{r['total_points']} очк.</b>")
     text = "\n".join(lines)
     tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players]
     if tasks: await asyncio.gather(*tasks)
@@ -300,6 +360,7 @@ async def startup():
     asyncio.create_task(auto_start_scheduler())
     asyncio.create_task(daily_digest_scheduler())
     asyncio.create_task(daily_backup_scheduler())
+    asyncio.create_task(welcome_broadcast_scheduler())
 
 @app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
 async def manual_digest():
