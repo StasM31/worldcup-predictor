@@ -1173,23 +1173,31 @@ async function loadMatches(){
     const toggleWrap = document.getElementById('future-toggle-wrap');
     const futureList = document.getElementById('future-matches-list');
     if(toggleWrap){
-      if(hiddenCount > 0 || _showHiddenFuture){
-        const btnText = _showHiddenFuture
-          ? '📅 Скрыть предстоящие матчи'
-          : `📅 Показать предстоящие матчи (${hiddenCount})`;
+      if(hiddenCount > 0 && !_showHiddenFuture){
+        // Кнопка "показать" — внизу активных матчей
         toggleWrap.innerHTML = `<div style="text-align:center;margin-bottom:12px">
           <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
-            ${btnText}
+            📅 Показать предстоящие матчи (${hiddenCount})
           </button>
         </div>`;
       } else {
         toggleWrap.innerHTML = '';
       }
     }
-    // Скрытые матчи — в отдельном блоке после основных
+    // Кнопка "скрыть" — вверху перед предстоящими матчами
     if(futureList){
-      futureList.innerHTML = _showHiddenFuture ? hiddenFuture.map(m=>renderMatch(m)).join('') : '';
+      if(_showHiddenFuture){
+        futureList.innerHTML = `<div style="text-align:center;margin-bottom:12px">
+          <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
+            📅 Скрыть предстоящие матчи
+          </button>
+        </div>` + hiddenFuture.map(m=>renderMatch(m)).join('');
+      } else {
+        futureList.innerHTML = '';
+      }
     }
+    return;
+
 
     updateTimers();
     ensureAutoUpdateBar();
