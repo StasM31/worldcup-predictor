@@ -1143,7 +1143,12 @@ async function loadMatches(){
       hiddenFuture = active.filter(m=>!visibleActive.includes(m));
     }
 
-    const shown = _showFinished ? [...finished,...visibleActive] : visibleActive;
+    // Если показываем скрытые — добавляем их в список
+    const shownActive = (_showHiddenFuture && hiddenFuture.length > 0)
+      ? [...visibleActive, ...hiddenFuture]
+      : visibleActive;
+
+    const shown = _showFinished ? [...finished,...shownActive] : shownActive;
     const finCount = finished.length;
     const hiddenCount = hiddenFuture.length;
 
@@ -1174,23 +1179,22 @@ async function loadMatches(){
     </div>`;
 
     // Строим весь список сразу: активные → кнопка → [скрытые если раскрыты]
-    let html = toggleBtn + shown.map(m=>renderMatch(m)).join('');
+    const shownMatches = _showFinished ? [...finished,...visibleActive] : visibleActive;
+    let html = toggleBtn + shownMatches.map(m=>renderMatch(m)).join('');
 
-    if(!shown.length && !_showFinished){
+    if(!shownMatches.length && !_showFinished){
       html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>`;
     }
 
     if(hiddenCount > 0){
       if(_showHiddenFuture){
-        // Кнопка "скрыть" + скрытые матчи
         html += hideBtn + hiddenFuture.map(m=>renderMatch(m)).join('');
       } else {
-        // Только кнопка "показать"
         html += showBtn;
       }
     }
 
-
+    el.innerHTML = html;
     updateTimers();
     ensureAutoUpdateBar();
     loadTournamentBanner();
@@ -1206,12 +1210,6 @@ let _showHiddenFuture = false;
 let _savedHideDays = 0;
 function toggleHiddenFuture(){
   _showHiddenFuture = !_showHiddenFuture;
-  if(_showHiddenFuture){
-    _savedHideDays = state.hideDays;
-    state.hideDays = 0;
-  } else {
-    state.hideDays = _savedHideDays;
-  }
   loadMatches();
 }
 function renderMatch(m){
