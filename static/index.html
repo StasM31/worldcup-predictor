@@ -840,6 +840,22 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
         </div>
       </div>
       <div class="admin-block">
+        <h3>👁 Скрытие предстоящих матчей</h3>
+        <p class="hint">Скрывай у участников матчи которые состоятся нескоро — меньше путаницы. Участники смогут раскрыть их кнопкой.</p>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="font-size:13px;color:var(--text2)">Скрывать матчи через более чем:</label>
+          <select id="hide-days-select" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:13px" onchange="saveHideDays()">
+            <option value="0">Не скрывать</option>
+            <option value="1">1 сутки</option>
+            <option value="2">2 суток</option>
+            <option value="3">3 суток</option>
+            <option value="4">4 суток</option>
+            <option value="5">5 суток</option>
+          </select>
+          <span id="hide-days-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+      <div class="admin-block">
         <h3>📋 Управление матчами</h3>
         <div id="admin-matches-list"></div>
       </div>
@@ -1109,10 +1125,25 @@ async function loadMatches(){
     const active = matches.filter(m=>m.status!=='finished' && m.status!=='ended');
     const finished = matches.filter(m=>m.status==='finished' || m.status==='ended');
 
-    const shown = _showFinished ? matches : active;
-    const finCount = finished.length;
+    // Фильтр по дням
+    const hideDays = getHideDays();
+    let visibleActive = active;
+    let hiddenFuture = [];
+    if(hideDays > 0){
+      const nowMsk = Date.now() + 3*60*60*1000;
+      visibleActive = active.filter(m=>{
+        const parts = m.match_time.split(/[T:\-]/);
+        const matchMs = Date.UTC(parts[0],parseInt(parts[1])-1,parts[2],parts[3],parts[4]) - 3*60*60*1000;
+        return (matchMs - nowMsk) <= hideDays*24*60*60*1000;
+      });
+      hiddenFuture = active.filter(m=>!visibleActive.includes(m));
+    }
 
-    // Кнопка вверху
+    const shown = _showFinished ? [...finished,...visibleActive] : visibleActive;
+    const finCount = finished.length;
+    const hiddenCount = hiddenFuture.length;
+
+    // Кнопка завершённых
     let toggleBtn = '';
     if(finCount > 0){
       const btnText = _showFinished
@@ -1125,10 +1156,20 @@ async function loadMatches(){
       </div>`;
     }
 
-    let html = toggleBtn + shown.map(m=>renderMatch(m)).join('');
+    // Кнопка скрытых будущих матчей
+    let hiddenBtn = '';
+    if(hiddenCount > 0){
+      hiddenBtn = `<div style="text-align:center;margin-top:12px">
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
+          📅 Показать предстоящие матчи (${hiddenCount})
+        </button>
+      </div>`;
+    }
+
+    let html = toggleBtn + shown.map(m=>renderMatch(m)).join('') + hiddenBtn;
 
     if(!shown.length && !_showFinished){
-      html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>`;
+      html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>` + hiddenBtn;
     }
 
     el.innerHTML = html;
@@ -1140,6 +1181,19 @@ async function loadMatches(){
 
 function toggleFinished(){
   _showFinished = !_showFinished;
+  loadMatches();
+}
+
+let _showHiddenFuture = false;
+function toggleHiddenFuture(){
+  _showHiddenFuture = !_showHiddenFuture;
+  // Временно убрать фильтр
+  const saved = localStorage.getItem('hide_future_days');
+  if(_showHiddenFuture){
+    localStorage.setItem('hide_future_days','0');
+  } else {
+    localStorage.setItem('hide_future_days', saved||'0');
+  }
   loadMatches();
 }
 function renderMatch(m){
@@ -1725,6 +1779,18 @@ async function savePrizeSettings(){
 
 function updatePrizePreview(){}
 
+function saveHideDays(){
+  const val = document.getElementById('hide-days-select').value;
+  localStorage.setItem('hide_future_days', val);
+  const status = document.getElementById('hide-days-status');
+  if(status) status.textContent = val==='0' ? '✅ Все матчи показаны' : `✅ Скрываются матчи через ${val} сут.`;
+  loadMatches(); // Обновить список матчей
+}
+
+function getHideDays(){
+  return parseInt(localStorage.getItem('hide_future_days')||'0');
+}
+
 async function loadAdmin(){
   // Показать баннер импорта если матчей нет
   try{
@@ -1742,6 +1808,14 @@ async function loadAdmin(){
   }catch(e){}
 
   // Загрузить настройки призового фонда
+  // Восстановить настройку скрытия матчей
+  const hideDaysEl = document.getElementById('hide-days-select');
+  if(hideDaysEl){
+    hideDaysEl.value = localStorage.getItem('hide_future_days')||'0';
+    const status = document.getElementById('hide-days-status');
+    const val = hideDaysEl.value;
+    if(status) status.textContent = val==='0'?'✅ Все матчи показаны':`✅ Скрываются матчи через ${val} сут.`;
+  }
   await loadPlayersTable();
   try{
     const s = await api('/api/tournament-settings');
