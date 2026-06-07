@@ -1143,17 +1143,12 @@ async function loadMatches(){
       hiddenFuture = active.filter(m=>!visibleActive.includes(m));
     }
 
-    // Если показываем скрытые — добавляем их в список
-    const shownActive = (_showHiddenFuture && hiddenFuture.length > 0)
-      ? [...visibleActive, ...hiddenFuture]
-      : visibleActive;
 
-    const shown = _showFinished ? [...finished,...shownActive] : shownActive;
-    const finCount = finished.length;
     const hiddenCount = hiddenFuture.length;
 
     // Кнопка завершённых
     let toggleBtn = '';
+    const finCount = finished.length;
     if(finCount > 0){
       const btnText = _showFinished
         ? `▲ Скрыть завершённые матчи (${finCount})`
@@ -1165,32 +1160,30 @@ async function loadMatches(){
       </div>`;
     }
 
-    // Кнопка-разделитель между видимыми и скрытыми матчами
-    const showBtn = `<div style="text-align:center;margin:8px 0 12px">
-      <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed;width:100%" onclick="toggleHiddenFuture()">
-        📅 Показать предстоящие матчи (${hiddenCount})
-      </button>
-    </div>`;
+    // Строим список: завершённые (если раскрыты) + активные + кнопка + предстоящие (если раскрыты)
+    let parts = [];
+    if(_showFinished) parts.push(...finished.map(m=>renderMatch(m)));
+    parts.push(...visibleActive.map(m=>renderMatch(m)));
 
-    const hideBtn = `<div style="text-align:center;margin:8px 0 12px">
-      <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed;width:100%" onclick="toggleHiddenFuture()">
-        📅 Скрыть предстоящие матчи
-      </button>
-    </div>`;
+    let html = toggleBtn + parts.join('');
 
-    // Строим весь список сразу: активные → кнопка → [скрытые если раскрыты]
-    const shownMatches = _showFinished ? [...finished,...visibleActive] : visibleActive;
-    let html = toggleBtn + shownMatches.map(m=>renderMatch(m)).join('');
-
-    if(!shownMatches.length && !_showFinished){
+    if(!parts.length){
       html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>`;
     }
 
     if(hiddenCount > 0){
       if(_showHiddenFuture){
-        html += hideBtn + hiddenFuture.map(m=>renderMatch(m)).join('');
+        html += `<div style="text-align:center;margin:8px 0 12px">
+          <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed;width:100%" onclick="toggleHiddenFuture()">
+            📅 Скрыть предстоящие матчи
+          </button>
+        </div>` + hiddenFuture.map(m=>renderMatch(m)).join('');
       } else {
-        html += showBtn;
+        html += `<div style="text-align:center;margin:8px 0 12px">
+          <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed;width:100%" onclick="toggleHiddenFuture()">
+            📅 Показать предстоящие матчи (${hiddenCount})
+          </button>
+        </div>`;
       }
     }
 
