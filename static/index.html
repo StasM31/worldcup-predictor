@@ -1158,12 +1158,20 @@ async function loadMatches(){
 
     // Кнопка скрытых будущих матчей
     let hiddenBtn = '';
-    if(hiddenCount > 0){
-      hiddenBtn = `<div style="text-align:center;margin-top:12px">
-        <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
-          📅 Показать предстоящие матчи (${hiddenCount})
-        </button>
-      </div>`;
+    if(hiddenCount > 0 || _showHiddenFuture){
+      if(_showHiddenFuture){
+        hiddenBtn = `<div style="text-align:center;margin-top:12px">
+          <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
+            📅 Скрыть предстоящие матчи
+          </button>
+        </div>`;
+      } else {
+        hiddenBtn = `<div style="text-align:center;margin-top:12px">
+          <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
+            📅 Показать предстоящие матчи (${hiddenCount})
+          </button>
+        </div>`;
+      }
     }
 
     let html = toggleBtn + shown.map(m=>renderMatch(m)).join('') + hiddenBtn;
@@ -1185,14 +1193,14 @@ function toggleFinished(){
 }
 
 let _showHiddenFuture = false;
+let _savedHideDays = '0';
 function toggleHiddenFuture(){
   _showHiddenFuture = !_showHiddenFuture;
-  // Временно убрать фильтр
-  const saved = localStorage.getItem('hide_future_days');
   if(_showHiddenFuture){
+    _savedHideDays = localStorage.getItem('hide_future_days')||'0';
     localStorage.setItem('hide_future_days','0');
   } else {
-    localStorage.setItem('hide_future_days', saved||'0');
+    localStorage.setItem('hide_future_days', _savedHideDays);
   }
   loadMatches();
 }
