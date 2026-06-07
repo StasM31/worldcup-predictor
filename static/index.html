@@ -17,7 +17,7 @@
   --shadow-lg:0 4px 6px rgba(0,0,0,.07),0 10px 40px rgba(0,0,0,.1);
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+body{overflow-x:hidden;font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
 
 /* ── ТЁМНАЯ ТЕМА ── */
@@ -37,7 +37,7 @@ body.dark-theme .admin-block{
   box-shadow:0 4px 20px rgba(0,0,0,0.3);
 }
 body.dark-theme .sticky-header,
-body.dark-theme nav{background:rgba(15,25,35,0.97);border-color:var(--border);}
+body.dark-theme nav{background:rgba(15,25,35,0.97);border-color:var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
 body.dark-theme .score-input,
 body.dark-theme .form-row input,
 body.dark-theme .form-row textarea,
@@ -510,6 +510,13 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
 .import-banner .ib-action{margin-left:auto;flex-shrink:0;}
 
 @media(max-width:700px){
+  .score-input{width:52px;height:50px;font-size:20px;}
+  .predict-row{gap:6px;}
+  .match-card{padding:14px 14px;}
+  .teams-row{font-size:15px;}
+  .lb-head,.lb-row{grid-template-columns:36px 1fr 50px 36px 36px 46px 50px;gap:4px;padding:10px 12px;font-size:12px;}
+  .lb-pts{font-size:18px;}
+
   .lb-head,.lb-row{grid-template-columns:36px 1fr 54px 36px 36px;}
   .lb-head>*:nth-child(n+6),.lb-row>*:nth-child(n+6){display:none;}
   main{padding:12px;}
@@ -1238,9 +1245,9 @@ function renderMatch(m){
     pred=`<div class="predict-area" style="margin-top:4px">
       <div class="predict-label">${hasExisting?'✏️ Изменить прогноз (до старта матча)':'Твой прогноз на счёт'}</div>
       <div class="predict-row">
-        <input class="score-input ${hasExisting?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExisting?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hVal}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value=this.value||'0'" inputmode="numeric">
         <span class="score-colon ${hasExisting?'score-done-sep':''}">:</span>
-        <input class="score-input ${hasExisting?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExisting?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value=this.value||'0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThis?'true':'false'})">${hasExisting?'Изменить':'Поставить'}</button>
         ${vbUsedOnThis?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк поставлен на этот матч">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:'') }
       </div></div>`;
@@ -1253,9 +1260,9 @@ function renderMatch(m){
     pred=`<div class="predict-area" style="margin-top:4px">
       <div class="predict-label" style="color:var(--green)">⚡ ${hasExistingGrace?'Можно изменить ещё 1 минуту!':'Последний шанс поставить!'}</div>
       <div class="predict-row">
-        <input class="score-input ${hasExistingGrace?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hValG}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExistingGrace?'score-done':''}" id="h-${m.id}" type="number" min="0" max="20" value="${hValG}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value=this.value||'0'" inputmode="numeric">
         <span class="score-colon ${hasExistingGrace?'score-done-sep':''}">:</span>
-        <input class="score-input ${hasExistingGrace?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aValG}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" inputmode="numeric">
+        <input class="score-input ${hasExistingGrace?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aValG}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value=this.value||'0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThisG?'true':'false'})">${hasExistingGrace?'Изменить':'Поставить'}</button>
         ${vbUsedOnThisG?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:'')}
       </div></div>`;
