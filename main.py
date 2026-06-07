@@ -173,7 +173,7 @@ async def broadcast_predictions(match_id):
     home = team_with_flag(match['home_team'])
     away = team_with_flag(match['away_team'])
     lines = [f"⚽ <b>{home} vs {away}</b>\n"]
-    for pl in all_players:
+    for pl in sorted(all_players, key=lambda x: x["name"]):
         p = pred_map.get(pl["name"])
         if p:
             vb = " 🔥<b>ВА-БАНК</b>" if p["is_vabank"] else ""

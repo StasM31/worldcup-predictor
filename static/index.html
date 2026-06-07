@@ -2005,11 +2005,14 @@ function toggleTheme(){
 }
 function applyTheme(){
   const saved = localStorage.getItem('theme');
-  if(saved === 'dark'){
+  // Тёмная тема по умолчанию
+  const isDark = saved === null ? true : saved === 'dark';
+  if(isDark){
     document.body.classList.add('dark-theme');
     const btn = document.getElementById('theme-btn');
     if(btn) btn.textContent = '☀️';
   }
+  if(saved === null) localStorage.setItem('theme','dark');
 }
 
 
