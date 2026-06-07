@@ -1163,28 +1163,38 @@ async function loadMatches(){
       </div>`;
     }
 
-    // Кнопка скрытых будущих матчей
-    let hiddenBtn = '';
+    // Кнопки и HTML
+    let hideFutureTopBtn = '';
+    let hideFutureBottomBtn = '';
+
     if(hiddenCount > 0 || _showHiddenFuture){
+      const showBtn = `<div style="text-align:center;margin-bottom:12px">
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
+          📅 Показать предстоящие матчи (${hiddenCount})
+        </button>
+      </div>`;
+      const hideBtn = `<div style="text-align:center;margin-bottom:12px">
+        <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
+          📅 Скрыть предстоящие матчи
+        </button>
+      </div>`;
       if(_showHiddenFuture){
-        hiddenBtn = `<div style="text-align:center;margin-top:12px">
-          <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
-            📅 Скрыть предстоящие матчи
-          </button>
-        </div>`;
+        hideFutureTopBtn = hideBtn; // кнопка "скрыть" вверху
       } else {
-        hiddenBtn = `<div style="text-align:center;margin-top:12px">
-          <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
-            📅 Показать предстоящие матчи (${hiddenCount})
-          </button>
-        </div>`;
+        hideFutureBottomBtn = showBtn; // кнопка "показать" внизу
       }
     }
 
-    let html = toggleBtn + shown.map(m=>renderMatch(m)).join('') + hiddenBtn;
+    let html = toggleBtn + shown.map(m=>renderMatch(m)).join('');
+    // Добавляем скрытые матчи если показываем
+    if(_showHiddenFuture){
+      html += hideFutureTopBtn + hiddenFuture.map(m=>renderMatch(m)).join('');
+    } else {
+      html += hideFutureBottomBtn;
+    }
 
-    if(!shown.length && !_showFinished){
-      html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>` + hiddenBtn;
+    if(!shown.length && !_showHiddenFuture){
+      html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>` + hideFutureBottomBtn;
     }
 
     el.innerHTML = html;
