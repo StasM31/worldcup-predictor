@@ -987,7 +987,7 @@ function teamHtml(name){
 const ballSvg=`<svg class="card-deco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="47" fill="none" stroke="#0a1628" stroke-width="2"/><polygon points="50,5 58,28 82,28 63,43 70,65 50,51 30,65 37,43 18,28 42,28" fill="#0a1628"/><circle cx="50" cy="50" r="13" fill="none" stroke="#0a1628" stroke-width="2"/></svg>`;
 
 // ── State ──
-let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false,tgConnected:false,botUsername:''};
+let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false,tgConnected:false,botUsername:'',hideDays:0};
 function toast(msg,type='ok'){const e=document.getElementById('toast');e.textContent=msg;e.className=`toast show ${type}`;setTimeout(()=>e.classList.remove('show'),2800);}
 async function api(path,opts={}){
   const sep=path.includes('?')?'&':'?';
@@ -1118,6 +1118,13 @@ let _showFinished = false;
 
 async function loadMatches(){
   try{
+    // Загружаем настройку скрытия матчей с сервера
+    if(!state.isAdmin){
+      try{
+        const s=await api('/api/tournament-settings');
+        state.hideDays = s.hide_days||0;
+      }catch(e){}
+    }
     const matches=await api('/api/matches');
     const el=document.getElementById('matches-list');
     if(!matches.length){el.innerHTML='<div class="empty"><div class="ico">📅</div>Матчей пока нет</div>';return;}
@@ -1193,14 +1200,14 @@ function toggleFinished(){
 }
 
 let _showHiddenFuture = false;
-let _savedHideDays = '0';
+let _savedHideDays = 0;
 function toggleHiddenFuture(){
   _showHiddenFuture = !_showHiddenFuture;
   if(_showHiddenFuture){
-    _savedHideDays = localStorage.getItem('hide_future_days')||'0';
-    localStorage.setItem('hide_future_days','0');
+    _savedHideDays = state.hideDays;
+    state.hideDays = 0;
   } else {
-    localStorage.setItem('hide_future_days', _savedHideDays);
+    state.hideDays = _savedHideDays;
   }
   loadMatches();
 }
@@ -1787,16 +1794,22 @@ async function savePrizeSettings(){
 
 function updatePrizePreview(){}
 
-function saveHideDays(){
+async function saveHideDays(){
   const val = document.getElementById('hide-days-select').value;
-  localStorage.setItem('hide_future_days', val);
+  // Сохраняем на сервер (для всех пользователей)
+  await fetch('/api/admin/hide-days',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body: JSON.stringify({hide_days: parseInt(val)})
+  });
+  state.hideDays = parseInt(val);
   const status = document.getElementById('hide-days-status');
   if(status) status.textContent = val==='0' ? '✅ Все матчи показаны' : `✅ Скрываются матчи через ${val} сут.`;
-  loadMatches(); // Обновить список матчей
+  loadMatches();
 }
 
 function getHideDays(){
-  return parseInt(localStorage.getItem('hide_future_days')||'0');
+  return state.hideDays || 0;
 }
 
 async function loadAdmin(){
@@ -1816,14 +1829,17 @@ async function loadAdmin(){
   }catch(e){}
 
   // Загрузить настройки призового фонда
-  // Восстановить настройку скрытия матчей
-  const hideDaysEl = document.getElementById('hide-days-select');
-  if(hideDaysEl){
-    hideDaysEl.value = localStorage.getItem('hide_future_days')||'0';
-    const status = document.getElementById('hide-days-status');
-    const val = hideDaysEl.value;
-    if(status) status.textContent = val==='0'?'✅ Все матчи показаны':`✅ Скрываются матчи через ${val} сут.`;
-  }
+  // Загрузить настройку скрытия матчей с сервера
+  try{
+    const s = await api('/api/tournament-settings');
+    state.hideDays = s.hide_days||0;
+    const hideDaysEl = document.getElementById('hide-days-select');
+    if(hideDaysEl){
+      hideDaysEl.value = String(state.hideDays);
+      const status = document.getElementById('hide-days-status');
+      if(status) status.textContent = state.hideDays===0?'✅ Все матчи показаны':`✅ Скрываются матчи через ${state.hideDays} сут.`;
+    }
+  }catch(e){}
   await loadPlayersTable();
   try{
     const s = await api('/api/tournament-settings');

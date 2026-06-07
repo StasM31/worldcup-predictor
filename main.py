@@ -82,7 +82,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS tournament_settings (
             id INTEGER PRIMARY KEY CHECK (id=1),
             entry_fee INTEGER DEFAULT 15000,
-            prize_config TEXT DEFAULT '60,30,10'
+            prize_config TEXT DEFAULT '60,30,10',
+            hide_days INTEGER DEFAULT 0
         );
         INSERT OR IGNORE INTO tournament_settings (id) VALUES (1);
         """)
@@ -92,6 +93,12 @@ def init_db():
             pass
 
 init_db()
+# Migration: add hide_days if missing
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE tournament_settings ADD COLUMN hide_days INTEGER DEFAULT 0")
+except:
+    pass
 
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
@@ -726,15 +733,23 @@ def get_tournament_settings(token: str):
 
 class TournamentSettingsIn(BaseModel):
     entry_fee: int
-    prize_config: str  # например "60,30,10" или "45000,22500,7500" (рубли если > 100)
+    prize_config: str
+    hide_days: int = 0
 
 @app.post("/api/admin/tournament-settings", dependencies=[Depends(require_admin)])
 def save_tournament_settings(body: TournamentSettingsIn):
     with get_db() as db:
-        db.execute("""INSERT INTO tournament_settings (id, entry_fee, prize_config)
-            VALUES (1, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET entry_fee=excluded.entry_fee, prize_config=excluded.prize_config""",
-            (body.entry_fee, body.prize_config))
+        db.execute("""INSERT INTO tournament_settings (id, entry_fee, prize_config, hide_days)
+            VALUES (1, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET entry_fee=excluded.entry_fee, prize_config=excluded.prize_config, hide_days=excluded.hide_days""",
+            (body.entry_fee, body.prize_config, body.hide_days))
+    return {"ok": True}
+
+@app.post("/api/admin/hide-days", dependencies=[Depends(require_admin)])
+def set_hide_days(body: dict):
+    days = int(body.get("hide_days", 0))
+    with get_db() as db:
+        db.execute("UPDATE tournament_settings SET hide_days=? WHERE id=1", (days,))
     return {"ok": True}
 
 @app.post("/api/telegram/webhook")
