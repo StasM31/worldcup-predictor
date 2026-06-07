@@ -1174,19 +1174,35 @@ async function loadMatches(){
     const futureList = document.getElementById('future-matches-list');
     if(toggleWrap){
       if(_showHiddenFuture){
-        toggleWrap.innerHTML = `<div style="text-align:center;margin-bottom:12px;position:sticky;top:56px;z-index:10;background:var(--bg);padding:8px 0">
+        toggleWrap.innerHTML = `<div style="text-align:center;margin-bottom:12px">
           <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
             📅 Скрыть предстоящие матчи
           </button>
         </div>`;
-      } else if(hiddenCount > 0){
+        // Плавающая кнопка внизу экрана
+        let floatBtn = document.getElementById('float-hide-btn');
+        if(!floatBtn){
+          floatBtn = document.createElement('div');
+          floatBtn.id = 'float-hide-btn';
+          floatBtn.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;';
+          document.body.appendChild(floatBtn);
+        }
+        floatBtn.innerHTML = `<button onclick="toggleHiddenFuture()" style="background:var(--navy);color:#fff;border:none;border-radius:20px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.3);font-family:'Manrope',sans-serif">
+          📅 Скрыть предстоящие матчи
+        </button>`;
+      } else {
+        // Убрать плавающую кнопку
+        const floatBtn = document.getElementById('float-hide-btn');
+        if(floatBtn) floatBtn.remove();
+        if(hiddenCount > 0){
         toggleWrap.innerHTML = `<div style="text-align:center;margin-bottom:12px">
           <button class="btn btn-ghost" style="font-size:12px;color:var(--muted);border-style:dashed" onclick="toggleHiddenFuture()">
             📅 Показать предстоящие матчи (${hiddenCount})
           </button>
         </div>`;
-      } else {
-        toggleWrap.innerHTML = '';
+        } else {
+          toggleWrap.innerHTML = '';
+        }
       }
     }
     // Скрытые матчи — в отдельном блоке после основных
