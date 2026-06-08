@@ -1048,11 +1048,10 @@ function enterApp(){
   document.getElementById('user-name2').textContent=state.playerName;
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
   checkWinnersTab();
-  // Загружаем hideDays сразу при входе для всех пользователей
+  // Загружаем hideDays и матчи параллельно
   api('/api/tournament-settings').then(s=>{
     state.hideDays = s.hide_days||0;
-    loadMatches();
-  }).catch(()=>loadMatches());
+  }).catch(()=>{}).finally(()=>loadMatches());
   showTgBanner();
   setTimeout(()=>{ensureAutoUpdateBar();startAutoUpdate();}, 800);
   applyTheme();
@@ -2330,11 +2329,16 @@ if(urlToken)document.getElementById('token-input').value=urlToken;
   const saved=localStorage.getItem('player_token')||urlToken;
   if(saved){state.token=saved;
     try{
-      const me=await api('/api/me');
-      state.playerName=me.name;state.vabankUsed=me.vabank_used;state.tgConnected=me.telegram_connected;
+      // Загружаем /me и bot-info параллельно для скорости
+      const [me, bi] = await Promise.all([
+        api('/api/me'),
+        fetch('/api/bot-info').then(r=>r.json()).catch(()=>({username:''}))
+      ]);
+      state.playerName=me.name;
+      state.vabankUsed=me.vabank_used;
+      state.tgConnected=me.telegram_connected;
+      state.botUsername=bi.username||'';
       if(urlToken)localStorage.setItem('player_token',urlToken);
-      // Загружаем username бота
-      try{const bi=await fetch('/api/bot-info').then(r=>r.json());state.botUsername=bi.username||'';}catch(e){}
       enterApp();
     }
     catch(e){localStorage.removeItem('player_token');}
