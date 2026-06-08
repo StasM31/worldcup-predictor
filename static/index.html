@@ -1620,8 +1620,45 @@ async function loadTournament(){
   }catch(e){toast(e.message,'err');}
 }
 async function saveTournamentPred(){
-  const body={token:state.token,champion:document.getElementById('tc-champ').value.trim(),finalist1:document.getElementById('tc-fin1').value.trim(),finalist2:document.getElementById('tc-fin2').value.trim(),top_scorer:document.getElementById('tc-third').value.trim()};
-  try{await api('/api/tournament-prediction',{method:'POST',body:JSON.stringify(body)});toast('Прогноз сохранён! 🏆');loadTournament();}catch(e){toast(e.message||'Ошибка сохранения','err');}
+  const body={token:state.token,champion:document.getElementById('tc-champ').value,finalist1:document.getElementById('tc-fin1').value,finalist2:document.getElementById('tc-fin2').value,top_scorer:document.getElementById('tc-third')?.value||''};
+  if(!body.champion){toast('Выбери чемпиона!','err');return;}
+  if(!body.finalist1||!body.finalist2){toast('Выбери обоих финалистов!','err');return;}
+  try{
+    await api('/api/tournament-prediction',{method:'POST',body:JSON.stringify(body)});
+
+    // Показываем красивое подтверждение
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `<div class="modal" style="max-width:380px">
+      <div style="background:linear-gradient(135deg,#0a1628,#1a3a6e);padding:32px 24px;text-align:center;border-radius:16px 16px 0 0">
+        <div style="font-size:56px;margin-bottom:10px">🏆</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:2px">ПРОГНОЗ ПРИНЯТ!</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);margin-top:6px">Твоя ставка на финал сохранена</div>
+      </div>
+      <div class="modal-body" style="padding:20px 24px">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px">
+            <span>🥇 Чемпион</span><strong>${body.champion}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px">
+            <span>🥈 Финалист 1</span><strong>${body.finalist1}</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px">
+            <span>🥈 Финалист 2</span><strong>${body.finalist2}</strong>
+          </div>
+          ${body.top_scorer?`<div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:14px">
+            <span>🥉 3-е место</span><strong>${body.top_scorer}</strong>
+          </div>`:''}
+        </div>
+        <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px">До начала первого матча прогноз можно изменить</p>
+        <button onclick="this.closest('.modal-overlay').remove();loadTournament();" style="width:100%;padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--black);font-size:14px;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif">
+          Отлично! ✓
+        </button>
+      </div>
+    </div>`;
+    modal.addEventListener('click',e=>{if(e.target===modal){modal.remove();loadTournament();}});
+    document.body.appendChild(modal);
+  }catch(e){toast(e.message||'Ошибка сохранения','err');}
 }
 
 // ── LEADERBOARD ──
