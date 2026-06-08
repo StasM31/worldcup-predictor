@@ -477,6 +477,29 @@ body.dark-theme .stat-card{background:var(--surface);border-color:var(--border);
 body.dark-theme .stat-card .sc-num{color:#e2e8f0;}
 body.dark-theme .podium-name{color:#e2e8f0;}
 
+
+.rules-agree-banner{
+  background:linear-gradient(135deg,#1a1a2e,#16213e);
+  border:2px solid rgba(240,180,41,0.4);border-radius:14px;
+  padding:20px 22px;margin-bottom:16px;
+}
+.rules-agree-banner h4{
+  font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;
+  color:#fff;letter-spacing:1px;margin-bottom:10px;
+}
+.rules-agree-banner p{font-size:13px;color:rgba(255,255,255,0.75);margin-bottom:16px;line-height:1.6;}
+.rules-agree-check{display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:14px;}
+.rules-agree-check input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:var(--gold2);}
+.rules-agree-check label{font-size:14px;color:#fff;cursor:pointer;font-weight:600;}
+.rules-agree-btn{
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--black);border:none;border-radius:10px;
+  padding:12px 24px;font-size:14px;font-weight:700;
+  font-family:'Manrope',sans-serif;cursor:pointer;
+  opacity:0.4;pointer-events:none;transition:opacity .2s;
+}
+.rules-agree-btn.active{opacity:1;pointer-events:auto;}
+
 .tourn-banner{
   background:linear-gradient(135deg,var(--navy),#1a3a6e);
   border:1.5px solid rgba(201,168,76,0.3);border-radius:12px;
@@ -493,7 +516,30 @@ body.dark-theme .podium-name{color:#e2e8f0;}
 .tourn-banner .tb-pred b{color:var(--gold3);}
 body.light-mode .tourn-banner .tb-text,
 body:not(.dark-theme) .tourn-banner .tb-text{color:#fff;}
-body.dark-theme .tourn-banner{background:linear-gradient(135deg,#0d1f3a,#1a3a6e);border-color:rgba(201,168,76,0.35);}
+body.dark-theme 
+.rules-agree-banner{
+  background:linear-gradient(135deg,#1a1a2e,#16213e);
+  border:2px solid rgba(240,180,41,0.4);border-radius:14px;
+  padding:20px 22px;margin-bottom:16px;
+}
+.rules-agree-banner h4{
+  font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;
+  color:#fff;letter-spacing:1px;margin-bottom:10px;
+}
+.rules-agree-banner p{font-size:13px;color:rgba(255,255,255,0.75);margin-bottom:16px;line-height:1.6;}
+.rules-agree-check{display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:14px;}
+.rules-agree-check input[type=checkbox]{width:20px;height:20px;cursor:pointer;accent-color:var(--gold2);}
+.rules-agree-check label{font-size:14px;color:#fff;cursor:pointer;font-weight:600;}
+.rules-agree-btn{
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  color:var(--black);border:none;border-radius:10px;
+  padding:12px 24px;font-size:14px;font-weight:700;
+  font-family:'Manrope',sans-serif;cursor:pointer;
+  opacity:0.4;pointer-events:none;transition:opacity .2s;
+}
+.rules-agree-btn.active{opacity:1;pointer-events:auto;}
+
+.tourn-banner{background:linear-gradient(135deg,#0d1f3a,#1a3a6e);border-color:rgba(201,168,76,0.35);}
 body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d2a18);}
 .section-title{font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
 
@@ -593,6 +639,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
   <main>
     <div id="section-matches" class="section active">
       <div id="tg-connect-banner-wrap"></div>
+      <div id="rules-agree-wrap"></div>
       <div id="tournament-banner"></div>
       <div id="matches-list"></div>
     </div>
@@ -997,7 +1044,7 @@ function teamHtml(name){
 const ballSvg=`<svg class="card-deco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="47" fill="none" stroke="#0a1628" stroke-width="2"/><polygon points="50,5 58,28 82,28 63,43 70,65 50,51 30,65 37,43 18,28 42,28" fill="#0a1628"/><circle cx="50" cy="50" r="13" fill="none" stroke="#0a1628" stroke-width="2"/></svg>`;
 
 // ── State ──
-let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false,tgConnected:false,botUsername:'',hideDays:0};
+let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false,tgConnected:false,botUsername:'',hideDays:0,rulesAccepted:false};
 function toast(msg,type='ok'){const e=document.getElementById('toast');e.textContent=msg;e.className=`toast show ${type}`;setTimeout(()=>e.classList.remove('show'),2800);}
 async function api(path,opts={}){
   const sep=path.includes('?')?'&':'?';
@@ -1051,6 +1098,9 @@ function enterApp(){
   document.getElementById('user-name2').textContent=state.playerName;
   if(state.isAdmin)document.getElementById('admin-tab').style.display='';
   checkWinnersTab();
+  // Проверяем приняты ли правила
+  state.rulesAccepted = localStorage.getItem('rules_accepted_v1') === 'true';
+  showRulesAgreeBanner();
   // Загружаем hideDays и матчи параллельно
   api('/api/tournament-settings').then(s=>{
     state.hideDays = s.hide_days||0;
@@ -1334,8 +1384,52 @@ function showVabankConfirm(){
   });
 }
 
+function showRulesAgreeBanner(){
+  const wrap = document.getElementById('rules-agree-wrap');
+  if(!wrap) return;
+  if(state.rulesAccepted || state.isAdmin){
+    wrap.innerHTML = '';
+    return;
+  }
+  wrap.innerHTML = `<div class="rules-agree-banner">
+    <h4>📋 Перед первой ставкой ознакомься с правилами</h4>
+    <p>Ознакомься с правилами турнира прежде чем делать прогнозы. Нажми на ссылку ниже чтобы прочитать правила, затем подтверди что ознакомился.</p>
+    <p><a href="#" onclick="showTab('rules');return false;" style="color:var(--gold2);font-weight:600">📖 Читать правила →</a></p>
+    <div class="rules-agree-check">
+      <input type="checkbox" id="rules-checkbox" onchange="toggleRulesBtn(this)">
+      <label for="rules-checkbox">Я ознакомился с правилами турнира и согласен с ними</label>
+    </div>
+    <button class="rules-agree-btn" id="rules-agree-btn" onclick="acceptRules()">
+      ✅ Подтвердить и начать делать прогнозы
+    </button>
+  </div>`;
+}
+
+function toggleRulesBtn(checkbox){
+  const btn = document.getElementById('rules-agree-btn');
+  if(btn) btn.classList.toggle('active', checkbox.checked);
+}
+
+function acceptRules(){
+  state.rulesAccepted = true;
+  localStorage.setItem('rules_accepted_v1', 'true');
+  const wrap = document.getElementById('rules-agree-wrap');
+  if(wrap) wrap.innerHTML = '';
+  toast('✅ Отлично! Теперь можешь делать прогнозы!', 'ok');
+}
+
 async function submitPred(matchId,isVabank){
   if(isVabank&&state.vabankUsed){toast('Ва-банк уже использован!','err');return;}
+  // Проверяем приняты ли правила
+  if(!state.rulesAccepted && !state.isAdmin){
+    toast('Сначала ознакомься с правилами турнира ☝️','err');
+    showTab('matches');
+    setTimeout(()=>{
+      const wrap = document.getElementById('rules-agree-wrap');
+      if(wrap) wrap.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 100);
+    return;
+  }
   if(isVabank){
     const ok = await showVabankConfirm();
     if(!ok) return;
