@@ -783,6 +783,17 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
           </div>
         </div>
       </div>
+
+      <!-- Галочка подтверждения правил -->
+      <div id="rules-accept-block" class="rules-card" style="border-left:4px solid var(--green);background:linear-gradient(135deg,rgba(22,163,74,0.05),rgba(22,163,74,0.02))">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:var(--navy);margin-bottom:4px">✅ Подтвердить ознакомление</div>
+            <div style="font-size:13px;color:var(--muted)">После подтверждения ты сможешь делать прогнозы на матчи.</div>
+          </div>
+          <div id="rules-accept-btn-wrap"></div>
+        </div>
+      </div>
     </div>
 
     <div id="section-winners" class="section">
@@ -1121,7 +1132,7 @@ function showTab(name){
   if(name==='admin')loadAdmin();
   if(name==='tournament'){loadTournament();setTimeout(()=>{if(_stopConfetti)_stopConfetti();_stopConfetti=startConfetti();},100);}
   else{if(_stopConfetti){_stopConfetti();_stopConfetti=null;}}
-  if(name==='rules')loadRules();
+  if(name==='rules'){loadRules();setTimeout(updateRulesAcceptBlock,300);}
   if(name==='winners'){loadWinners();startFireworks();}
   else{stopFireworks();}
 }
@@ -1382,6 +1393,43 @@ function showVabankConfirm(){
     modal.querySelector('#vb-confirm').addEventListener('click',()=>{modal.remove();resolve(true);});
     document.body.appendChild(modal);
   });
+}
+
+function updateRulesAcceptBlock(){
+  const wrap = document.getElementById('rules-accept-btn-wrap');
+  if(!wrap) return;
+  if(state.rulesAccepted || state.isAdmin){
+    wrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--green);font-weight:700;font-size:14px">
+      <span style="font-size:22px">✅</span> Правила приняты
+    </div>`;
+  } else {
+    wrap.innerHTML = `<div>
+      <div class="rules-agree-check" style="margin-bottom:10px">
+        <input type="checkbox" id="rules-checkbox2" onchange="toggleRulesBtn2(this)">
+        <label for="rules-checkbox2" style="color:var(--text)">Я ознакомился и согласен с правилами</label>
+      </div>
+      <button class="rules-agree-btn" id="rules-agree-btn2" onclick="acceptRules()">
+        ✅ Подтвердить и начать играть
+      </button>
+    </div>`;
+  }
+}
+
+function toggleRulesBtn2(checkbox){
+  const btn = document.getElementById('rules-agree-btn2');
+  if(btn) btn.classList.toggle('active', checkbox.checked);
+}
+
+function acceptRules(){
+  state.rulesAccepted = true;
+  localStorage.setItem('rules_accepted_v1', 'true');
+  // Убираем оба баннера
+  const wrap1 = document.getElementById('rules-agree-wrap');
+  if(wrap1) wrap1.innerHTML = '';
+  updateRulesAcceptBlock();
+  toast('✅ Отлично! Теперь можешь делать прогнозы!', 'ok');
+  // Переходим на матчи
+  setTimeout(()=>showTab('matches'), 1000);
 }
 
 function showRulesAgreeBanner(){
