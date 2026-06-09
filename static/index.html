@@ -829,6 +829,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
             <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Призовые места</label>
             <div style="display:flex;gap:6px;align-items:center">
+              <input type="hidden" id="prize-mode-input" value="pct">
               <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
                 <button id="mode-pct" onclick="setPrizeMode('pct')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#2563eb;color:#fff;transition:all .15s">%</button>
                 <button id="mode-rub" onclick="setPrizeMode('rub')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);transition:all .15s">₽</button>
@@ -1977,7 +1978,9 @@ async function savePrizeSettings(){
   const n=parseInt(nEl?.value)||1;
   const fund=fee*n;
   const places=getPrizePlaces();
-  const isRub=_prizeMode==='rub';
+  // Читаем режим из скрытого поля (надёжнее чем глобальная переменная)
+  const modeInput = document.getElementById('prize-mode-input');
+  const isRub = (modeInput ? modeInput.value : _prizeMode) === 'rub';
   let prizeConfig;
   if(isRub){
     if(fund<=0){toast('Укажи взнос и кол-во участников','err');return;}
