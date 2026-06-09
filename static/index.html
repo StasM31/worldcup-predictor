@@ -830,8 +830,8 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
             <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Призовые места</label>
             <div style="display:flex;gap:6px;align-items:center">
               <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-                <button id="mode-pct" onclick="setPrizeMode('pct')" style="padding:5px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:var(--navy);color:#fff">%</button>
-                <button id="mode-rub" onclick="setPrizeMode('rub')" style="padding:5px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:transparent;color:var(--muted)">₽</button>
+                <button id="mode-pct" onclick="setPrizeMode('pct')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#2563eb;color:#fff;transition:all .15s">%</button>
+                <button id="mode-rub" onclick="setPrizeMode('rub')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);transition:all .15s">₽</button>
               </div>
               <button class="btn btn-ghost btn-sm" onclick="addPrizePlace()" style="font-size:12px">+ Место</button>
               <button class="btn btn-ghost btn-sm" onclick="removePrizePlace()" style="font-size:12px;color:var(--red)">− Убрать</button>
@@ -1849,11 +1849,11 @@ let _prizeMode = 'pct'; // 'pct' = проценты, 'rub' = рубли
 
 function setPrizeMode(mode){
   _prizeMode = mode;
-  // Update toggle buttons
-  document.getElementById('mode-pct').style.background = mode==='pct'?'var(--navy)':'transparent';
-  document.getElementById('mode-pct').style.color = mode==='pct'?'#fff':'var(--muted)';
-  document.getElementById('mode-rub').style.background = mode==='rub'?'var(--navy)':'transparent';
-  document.getElementById('mode-rub').style.color = mode==='rub'?'#fff':'var(--muted)';
+  // Update toggle buttons with clear active state
+  const pctBtn = document.getElementById('mode-pct');
+  const rubBtn = document.getElementById('mode-rub');
+  if(pctBtn){pctBtn.style.background=mode==='pct'?'#2563eb':'transparent';pctBtn.style.color=mode==='pct'?'#fff':'var(--text2)';}
+  if(rubBtn){rubBtn.style.background=mode==='rub'?'#16a34a':'transparent';rubBtn.style.color=mode==='rub'?'#fff':'var(--text2)';}
   // Re-render places with new mode
   const places = getPrizePlaces();
   savePlacesToUI(places);
