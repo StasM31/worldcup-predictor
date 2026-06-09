@@ -685,7 +685,7 @@ def add_player(body: PlayerIn):
 @app.get("/api/admin/players", dependencies=[Depends(require_admin)])
 def get_players():
     with get_db() as db:
-        rows = db.execute("SELECT id,name,telegram_chat_id,token FROM players").fetchall()
+        rows = db.execute("SELECT id,name,telegram_chat_id,token,last_seen FROM players").fetchall()
     return [dict(r) for r in rows]
 
 @app.delete("/api/admin/players/{player_id}", dependencies=[Depends(require_admin)])
