@@ -849,7 +849,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
       <div class="admin-block">
         <h3>👥 Участники</h3>
         <div class="form-row"><input id="p-name" placeholder="Имя участника"><button class="btn btn-primary" onclick="addPlayer()">Добавить</button></div>
-        <table class="adm-table"><thead><tr><th>Имя</th><th>Токен</th><th>Telegram</th><th></th></tr></thead><tbody id="players-table"></tbody></table>
+        <table class="adm-table"><thead><tr><th>Имя</th><th>Токен</th><th>Telegram</th><th>Последний вход</th><th></th></tr></thead><tbody id="players-table"></tbody></table>
       </div>
       <div class="admin-block">
         <h3>➕ Добавить один матч</h3>
@@ -1855,7 +1855,7 @@ function toggleArchive(header){
 const PLACE_MEDALS=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣'];
 let _prizeMode = 'pct'; // 'pct' = проценты, 'rub' = рубли
 
-function setPrizeMode(mode){
+function setPrizeMode(mode, skipRender){
   _prizeMode = mode;
   localStorage.setItem('prize_mode', mode);
   // Update toggle buttons with clear active state
@@ -1863,9 +1863,11 @@ function setPrizeMode(mode){
   const rubBtn = document.getElementById('mode-rub');
   if(pctBtn){pctBtn.style.background=mode==='pct'?'#2563eb':'transparent';pctBtn.style.color=mode==='pct'?'#fff':'var(--text2)';}
   if(rubBtn){rubBtn.style.background=mode==='rub'?'#16a34a':'transparent';rubBtn.style.color=mode==='rub'?'#fff':'var(--text2)';}
-  // Re-render places with new mode
-  const places = getPrizePlaces();
-  savePlacesToUI(places);
+  // Re-render places only if not loading from server
+  if(!skipRender){
+    const places = getPrizePlaces();
+    savePlacesToUI(places);
+  }
 }
 
 function getPrizePlaces(){
@@ -2077,8 +2079,8 @@ async function loadAdmin(){
         savePlacesToUI(places);
       }
     }
-    // Обновить вид кнопок режима
-    setPrizeMode(_prizeMode);
+    // Обновить вид кнопок режима (без перерендера — данные уже загружены)
+    setPrizeMode(_prizeMode, true);
   }catch(e){ renderPrizePlaces(); }
   await loadAdminMatches();
 }
@@ -2098,6 +2100,7 @@ async function loadPlayersTable(){
       <td><strong>${p.name}</strong></td>
       <td><span class="token-pill" onclick="copyLink('${origin}?token=${p.token}')">${p.token}</span></td>
       <td class="${p.telegram_chat_id?'tg-ok':'tg-no'}">${p.telegram_chat_id?'✅ Подключён':'⏳ Нет'}</td>
+      <td style="font-size:12px;color:var(--muted)">${p.last_seen||'—'}</td>
       <td style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="copyLink('${origin}?token=${p.token}')">📋</button>
         <button class="btn btn-red btn-sm" onclick="deletePlayer(${p.id},'${p.name}')">✕</button>

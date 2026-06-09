@@ -39,7 +39,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
             telegram_chat_id TEXT,
-            token TEXT UNIQUE NOT NULL
+            token TEXT UNIQUE NOT NULL,
+            last_seen TEXT
         );
         CREATE TABLE IF NOT EXISTS matches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -97,6 +98,12 @@ init_db()
 try:
     with get_db() as _db:
         _db.execute("ALTER TABLE tournament_settings ADD COLUMN hide_days INTEGER DEFAULT 0")
+except:
+    pass
+# Migration: add last_seen if missing
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE players ADD COLUMN last_seen TEXT")
 except:
     pass
 
@@ -499,7 +506,8 @@ def get_me(token: str):
     player = get_player_by_token(token)
     with get_db() as db:
         vb = db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone()
-    # Получаем username бота из токена (формат: 123456:ABC... → имя не известно, отдаём флаг)
+        now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).strftime("%d.%m %H:%M")
+        db.execute("UPDATE players SET last_seen=? WHERE id=?", (now_msk, player["id"]))
     return {
         "id": player["id"],
         "name": player["name"],
