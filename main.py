@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import sqlite3, os, httpx, asyncio, secrets
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 app = FastAPI()
 
@@ -504,6 +504,7 @@ async def bot_info():
 @app.get("/api/me")
 def get_me(token: str):
     player = get_player_by_token(token)
+    from datetime import timedelta
     with get_db() as db:
         vb = db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone()
         now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).strftime("%d.%m %H:%M")
