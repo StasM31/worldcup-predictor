@@ -803,50 +803,48 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
 
     <div id="section-admin" class="section">
       <div id="import-banner-wrap"></div>
-      <div class="admin-block" id="prize-settings-block">
+            <div class="admin-block" id="prize-settings-block">
         <h3>💰 Взнос и призовой фонд</h3>
 
-        <!-- Взнос и кол-во участников -->
         <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:20px">
           <div>
             <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;font-weight:600">Взнос на участника</label>
             <div style="display:flex;align-items:center;gap:8px">
-              <input id="s-fee" type="number" min="0" placeholder="15000" style="width:130px" oninput="updatePrizeUI()">
-              <span style="color:var(--muted);font-size:15px">₽</span>
+              <input id="s-fee" type="number" min="0" placeholder="15000" style="width:130px" oninput="updatePrizePreview()">
+              <span style="color:var(--muted)">₽</span>
             </div>
           </div>
           <div>
             <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;font-weight:600">Кол-во участников</label>
             <div style="display:flex;align-items:center;gap:8px">
-              <input id="s-players" type="number" min="1" max="100" placeholder="5" style="width:80px;text-align:center" oninput="updatePrizeUI()">
+              <input id="s-players" type="number" min="1" max="100" placeholder="5" style="width:80px;text-align:center" oninput="updatePrizePreview()">
               <span style="color:var(--muted);font-size:13px">чел.</span>
             </div>
           </div>
         </div>
 
-        <!-- Призовые места -->
-        <div style="margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-            <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Призовые места</label>
-            <div style="display:flex;gap:6px;align-items:center">
-              <div id="prize-mode-toggle" data-mode="pct" style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-                <button id="mode-pct" onclick="setPrizeMode('pct')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#2563eb;color:#fff;transition:all .15s">%</button>
-                <button id="mode-rub" onclick="setPrizeMode('rub')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);transition:all .15s">₽</button>
-              </div>
-              <button class="btn btn-ghost btn-sm" onclick="addPrizePlace()" style="font-size:12px">+ Место</button>
-              <button class="btn btn-ghost btn-sm" onclick="removePrizePlace()" style="font-size:12px;color:var(--red)">− Убрать</button>
+        <!-- Режим -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Призовые места</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+              <button id="btn-mode-pct" onclick="switchPrizeMode('pct')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#2563eb;color:#fff">%</button>
+              <button id="btn-mode-rub" onclick="switchPrizeMode('rub')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2)">₽</button>
             </div>
+            <button class="btn btn-ghost btn-sm" onclick="addPrizeRow()" style="font-size:12px">+ Место</button>
+            <button class="btn btn-ghost btn-sm" onclick="removePrizeRow()" style="font-size:12px;color:var(--red)">− Убрать</button>
           </div>
-          <div id="prize-places" style="display:flex;flex-direction:column;gap:8px"></div>
-          <div id="prize-sum-warn" style="margin-top:8px;font-size:12px;display:none"></div>
         </div>
 
-        <!-- Превью -->
-        <div id="prize-preview" style="background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;display:none"></div>
+        <!-- Таблица призовых мест -->
+        <div id="prize-rows-wrap" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+        <div id="prize-warn" style="font-size:12px;margin-bottom:8px;display:none"></div>
+        <div id="prize-preview-block" style="background:var(--bg);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;display:none"></div>
 
         <button class="btn btn-primary" onclick="savePrizeSettings()">💾 Сохранить настройки</button>
       </div>
-      <div class="admin-block">
+
+<div class="admin-block">
         <h3>👥 Участники</h3>
         <div class="form-row"><input id="p-name" placeholder="Имя участника"><button class="btn btn-primary" onclick="addPlayer()">Добавить</button></div>
         <table class="adm-table"><thead><tr><th>Имя</th><th>Токен</th><th>Telegram</th><th>Последний вход</th><th></th></tr></thead><tbody id="players-table"></tbody></table>
@@ -1853,160 +1851,152 @@ function toggleArchive(header){
 // ── ADMIN ──
 
 const PLACE_MEDALS=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣'];
-let _prizeMode = 'pct'; // 'pct' = проценты, 'rub' = рубли
 
-function setPrizeMode(mode, skipRender){
-  // Сохраняем режим в DOM элементе - единственный источник правды
-  const toggle = document.getElementById('prize-mode-toggle');
-  if(toggle) toggle.dataset.mode = mode;
+// Текущий режим - хранится только здесь
+let PRIZE_MODE = 'pct'; // 'pct' или 'rub'
+// Текущие значения призовых мест
+let PRIZE_VALUES = [60, 30, 10]; // проценты или рубли
+
+function switchPrizeMode(mode){
+  PRIZE_MODE = mode;
   localStorage.setItem('prize_mode', mode);
-  const pctBtn = document.getElementById('mode-pct');
-  const rubBtn = document.getElementById('mode-rub');
-  if(pctBtn){pctBtn.style.background=mode==='pct'?'#2563eb':'transparent';pctBtn.style.color=mode==='pct'?'#fff':'var(--text2)';}
-  if(rubBtn){rubBtn.style.background=mode==='rub'?'#16a34a':'transparent';rubBtn.style.color=mode==='rub'?'#fff':'var(--text2)';}
-  if(!skipRender){
-    const places = getPrizePlaces();
-    savePlacesToUI(places);
+  document.getElementById('btn-mode-pct').style.background = mode==='pct'?'#2563eb':'transparent';
+  document.getElementById('btn-mode-pct').style.color = mode==='pct'?'#fff':'var(--text2)';
+  document.getElementById('btn-mode-rub').style.background = mode==='rub'?'#16a34a':'transparent';
+  document.getElementById('btn-mode-rub').style.color = mode==='rub'?'#fff':'var(--text2)';
+  // Конвертируем текущие значения при смене режима
+  const fee = parseInt(document.getElementById('s-fee')?.value)||15000;
+  const n = parseInt(document.getElementById('s-players')?.value)||1;
+  const fund = fee * n;
+  if(mode==='rub' && fund > 0){
+    PRIZE_VALUES = PRIZE_VALUES.map(v => Math.round(fund * v / 100));
+  } else if(mode==='pct' && fund > 0){
+    PRIZE_VALUES = PRIZE_VALUES.map(v => Math.round(v / fund * 100 * 10) / 10);
   }
+  renderPrizeRows();
 }
 
-function getCurrentMode(){
-  const toggle = document.getElementById('prize-mode-toggle');
-  return toggle ? toggle.dataset.mode : localStorage.getItem('prize_mode') || 'pct';
-}
-
-function getPrizePlaces(){
-  const inputs=document.querySelectorAll('[id^="prize-pct-"]');
-  if(!inputs.length) return [60,30,10];
-  return Array.from(inputs).map(el=>parseFloat(el.value)||0);
-}
-
-function savePlacesToUI(places){
-  const container=document.getElementById('prize-places');
-  if(!container) return;
-  const isRub = getCurrentMode()==='rub';
-  container.innerHTML=places.map((val,i)=>`
+function renderPrizeRows(){
+  const wrap = document.getElementById('prize-rows-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = PRIZE_VALUES.map((val,i) => `
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-size:18px;width:28px;text-align:center">${PLACE_MEDALS[i]||'•'}</span>
       <span style="font-size:13px;color:var(--muted);width:60px">${i+1} место</span>
-      <input type="number" min="0" ${isRub?'':'max="100"'} value="${val}" id="prize-pct-${i}" oninput="updatePrizeUI()" style="width:100px;text-align:center">
-      <span style="color:var(--muted);min-width:14px">${isRub?'₽':'%'}</span>
-      <span id="prize-amt-${i}" style="font-size:13px;font-weight:700;color:var(--green);min-width:90px"></span>
+      <input type="number" min="0" ${PRIZE_MODE==='pct'?'max="100"':''} value="${val}"
+        id="prize-val-${i}" oninput="onPrizeInput(${i},this.value)"
+        style="width:110px;text-align:center">
+      <span style="color:var(--muted);min-width:16px">${PRIZE_MODE==='rub'?'₽':'%'}</span>
+      <span id="prize-hint-${i}" style="font-size:12px;color:var(--green);min-width:80px"></span>
     </div>`).join('');
-  // Сохраняем data-mode после перезаписи innerHTML
-  container.dataset.mode = _prizeMode;
-  updatePrizeUI();
+  updatePrizePreview();
 }
 
-function renderPrizePlaces(){ savePlacesToUI([60,30,10]); }
-
-function addPrizePlace(){
-  const places=getPrizePlaces();
-  if(places.length>=7){toast('Максимум 7 мест','err');return;}
-  places.push(0);
-  savePlacesToUI(places);
+function onPrizeInput(idx, val){
+  PRIZE_VALUES[idx] = parseFloat(val)||0;
+  updatePrizePreview();
 }
 
-function removePrizePlace(){
-  const places=getPrizePlaces();
-  if(places.length<=1){toast('Минимум 1 место','err');return;}
-  places.pop();
-  savePlacesToUI(places);
+function addPrizeRow(){
+  if(PRIZE_VALUES.length >= 7){toast('Максимум 7 мест','err');return;}
+  PRIZE_VALUES.push(0);
+  renderPrizeRows();
 }
 
-function updatePrizeUI(){
-  const fee=parseInt(document.getElementById('s-fee')?.value)||15000;
-  // Кол-во участников: из ручного поля или из таблицы
-  const manualN=parseInt(document.getElementById('s-players')?.value);
-  const playerRows=document.querySelectorAll('#players-table tr');
-  const n=manualN>0?manualN:(playerRows.length>0?playerRows.length:Math.max(_lbRows.length,1));
-  const fund=fee*n;
-  const places=getPrizePlaces();
-  const isRub=getCurrentMode()==='rub';
-  const warn=document.getElementById('prize-sum-warn');
-  const preview=document.getElementById('prize-preview');
+function removePrizeRow(){
+  if(PRIZE_VALUES.length <= 1){toast('Минимум 1 место','err');return;}
+  PRIZE_VALUES.pop();
+  renderPrizeRows();
+}
 
-  if(isRub){
-    // Режим рублей
-    const totalRub=places.reduce((s,p)=>s+p,0);
-    places.forEach((amt,i)=>{
-      const el=document.getElementById(`prize-amt-${i}`);
-      const pct=fund>0?Math.round(amt/fund*1000)/10:0;
-      if(el) el.textContent=`(${pct}%)`;
-    });
-    if(warn){
-      if(totalRub>fund){
-        warn.style.display='block';
-        warn.innerHTML=`⚠️ Сумма призов <strong>${totalRub.toLocaleString('ru')} ₽</strong> превышает банк <strong>${fund.toLocaleString('ru')} ₽</strong>`;
-        warn.style.color='var(--red)';
-      } else if(totalRub<fund){
-        warn.style.display='block';
-        const diff=fund-totalRub;
-        warn.innerHTML=`ℹ️ Нераспределено: <strong>${diff.toLocaleString('ru')} ₽</strong>`;
-        warn.style.color='var(--muted)';
-      } else { warn.style.display='none'; }
-    }
-    if(preview){
-      preview.style.display='block';
-      preview.innerHTML=`<strong>Призовой фонд при ${n} участниках: ${fund.toLocaleString('ru')} ₽</strong>
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
-          ${places.map((amt,i)=>`<span>${PLACE_MEDALS[i]} <strong>${amt.toLocaleString('ru')} ₽</strong></span>`).join('')}
-        </div>`;
+function updatePrizePreview(){
+  // Синхронизируем PRIZE_VALUES с полями ввода
+  PRIZE_VALUES = PRIZE_VALUES.map((_,i) => {
+    const el = document.getElementById(`prize-val-${i}`);
+    return el ? parseFloat(el.value)||0 : 0;
+  });
+
+  const fee = parseInt(document.getElementById('s-fee')?.value)||15000;
+  const n = parseInt(document.getElementById('s-players')?.value)||1;
+  const fund = fee * n;
+  const warn = document.getElementById('prize-warn');
+  const preview = document.getElementById('prize-preview-block');
+
+  // Вычисляем суммы в рублях для отображения
+  let rubAmounts, valid = true;
+  if(PRIZE_MODE === 'rub'){
+    rubAmounts = PRIZE_VALUES;
+    const total = rubAmounts.reduce((s,v)=>s+v,0);
+    if(total > fund + 1){
+      valid = false;
+      if(warn){warn.style.display='block';warn.innerHTML=`⚠️ Сумма призов <strong>${total.toLocaleString('ru')} ₽</strong> превышает фонд <strong>${fund.toLocaleString('ru')} ₽</strong>`;warn.style.color='var(--red)';}
+    } else if(total < fund){
+      if(warn){warn.style.display='block';warn.innerHTML=`ℹ️ Нераспределено: <strong>${(fund-total).toLocaleString('ru')} ₽</strong>`;warn.style.color='var(--muted)';}
+    } else {
+      if(warn) warn.style.display='none';
     }
   } else {
-    // Режим процентов
-    const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
-    places.forEach((pct,i)=>{
-      const el=document.getElementById(`prize-amt-${i}`);
-      if(el) el.textContent=Math.round(fund*pct/100).toLocaleString('ru')+' ₽';
-    });
-    if(warn){
-      if(Math.abs(total-100)>0.1){
-        warn.style.display='block';
-        const diff=Math.round((total-100)*10)/10;
-        warn.innerHTML=`⚠️ Сумма = <strong>${total}%</strong> (нужно 100%). ${diff>0?`Убери ${diff}%`:`Добавь ${Math.abs(diff)}%`}`;
-        warn.style.color='var(--red)';
-      } else { warn.style.display='none'; }
+    const total = Math.round(PRIZE_VALUES.reduce((s,v)=>s+v,0)*10)/10;
+    rubAmounts = PRIZE_VALUES.map(p => Math.round(fund*p/100));
+    if(Math.abs(total-100) > 0.1){
+      valid = false;
+      const diff = Math.round((total-100)*10)/10;
+      if(warn){warn.style.display='block';warn.innerHTML=`⚠️ Сумма = <strong>${total}%</strong> (нужно 100%). ${diff>0?`Убери ${diff}%`:`Добавь ${Math.abs(diff)}%`}`;warn.style.color='var(--red)';}
+    } else {
+      if(warn) warn.style.display='none';
     }
-    if(preview && Math.abs(total-100)<=0.1){
-      preview.style.display='block';
-      preview.innerHTML=`<strong>Призовой фонд при ${n} участниках: ${fund.toLocaleString('ru')} ₽</strong>
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
-          ${places.map((pct,i)=>`<span>${PLACE_MEDALS[i]} <strong>${Math.round(fund*pct/100).toLocaleString('ru')} ₽</strong></span>`).join('')}
-        </div>`;
+  }
+
+  // Обновляем подсказки рядом с полями
+  PRIZE_VALUES.forEach((_,i) => {
+    const hint = document.getElementById(`prize-hint-${i}`);
+    if(hint && rubAmounts[i] !== undefined){
+      hint.textContent = PRIZE_MODE==='pct' ? `${rubAmounts[i].toLocaleString('ru')} ₽` : `(${fund>0?Math.round(rubAmounts[i]/fund*100*10)/10:0}%)`;
     }
+  });
+
+  if(preview){
+    preview.style.display = 'block';
+    preview.innerHTML = `<strong>Призовой фонд при ${n} участниках: ${fund.toLocaleString('ru')} ₽</strong>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">
+        ${rubAmounts.map((amt,i)=>`<span>${PLACE_MEDALS[i]} <strong>${amt.toLocaleString('ru')} ₽</strong></span>`).join('')}
+      </div>`;
   }
 }
 
 async function savePrizeSettings(){
-  const fee=parseInt(document.getElementById('s-fee').value)||15000;
-  const nEl=document.getElementById('s-players');
-  const n=parseInt(nEl?.value)||1;
-  const fund=fee*n;
-  const places=getPrizePlaces();
-  // Определяем режим надёжно через data-атрибут контейнера
-  const isRub = getCurrentMode() === 'rub';
+  // Синхронизируем значения с полями
+  PRIZE_VALUES = PRIZE_VALUES.map((_,i) => {
+    const el = document.getElementById(`prize-val-${i}`);
+    return el ? parseFloat(el.value)||0 : 0;
+  });
+
+  const fee = parseInt(document.getElementById('s-fee').value)||15000;
+  const n = parseInt(document.getElementById('s-players')?.value)||1;
+  const fund = fee * n;
+
   let prizeConfig;
-  if(isRub){
-    if(fund<=0){toast('Укажи взнос и кол-во участников','err');return;}
-    const totalRub=places.reduce((s,p)=>s+p,0);
-    if(totalRub>fund+1){toast(`Сумма призов (${totalRub.toLocaleString('ru')} ₽) превышает фонд (${fund.toLocaleString('ru')} ₽)`,'err');return;}
-    const pcts=places.map(amt=>Math.round(amt/fund*1000)/10);
-    prizeConfig=pcts.join(',');
+  if(PRIZE_MODE === 'rub'){
+    const total = PRIZE_VALUES.reduce((s,v)=>s+v,0);
+    if(total > fund + 1){toast(`Сумма призов превышает фонд`,'err');return;}
+    // Храним с префиксом rub:
+    prizeConfig = 'rub:' + PRIZE_VALUES.map(v=>Math.round(v)).join(',');
   } else {
-    const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
-    if(Math.abs(total-100)>0.1){toast(`Сумма % = ${total}, должно быть 100`,'err');return;}
-    prizeConfig=places.join(',');
+    const total = Math.round(PRIZE_VALUES.reduce((s,v)=>s+v,0)*10)/10;
+    if(Math.abs(total-100) > 0.1){toast(`Сумма % = ${total}, должно быть 100`,'err');return;}
+    prizeConfig = PRIZE_VALUES.join(',');
   }
-  const res=await fetch('/api/admin/tournament-settings',{
-    method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
-    body:JSON.stringify({entry_fee:fee,prize_config:prizeConfig,hide_days:state.hideDays||0})
+
+  const res = await fetch('/api/admin/tournament-settings',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body: JSON.stringify({entry_fee:fee, prize_config:prizeConfig, hide_days:state.hideDays||0})
   });
   if(res.ok) toast('💾 Настройки сохранены!','ok');
-  else toast('Ошибка','err');
+  else toast('Ошибка сохранения','err');
 }
 
-function updatePrizePreview(){}
+
 
 async function saveHideDays(){
   const val = document.getElementById('hide-days-select').value;
@@ -2043,53 +2033,34 @@ async function loadAdmin(){
   }catch(e){}
 
   // Загрузить настройки призового фонда
-  // Загрузить настройку скрытия матчей с сервера
-  try{
-    const s = await api('/api/tournament-settings');
-    state.hideDays = s.hide_days||0;
-    const hideDaysEl = document.getElementById('hide-days-select');
-    if(hideDaysEl){
-      hideDaysEl.value = String(state.hideDays);
-      const status = document.getElementById('hide-days-status');
-      if(status) status.textContent = state.hideDays===0?'✅ Все матчи показаны':`✅ Скрываются матчи через ${state.hideDays} сут.`;
-    }
-  }catch(e){}
-  await loadPlayersTable();
   try{
     const s = await api('/api/tournament-settings');
     const fee = s.entry_fee || 15000;
-    const feeEl = document.getElementById('s-fee');
-    if(feeEl) feeEl.value = fee;
-    // Установить кол-во участников из таблицы
-    const pRows = document.querySelectorAll('#players-table tr');
-    const nEl = document.getElementById('s-players');
-    if(nEl && pRows.length>0) nEl.value = pRows.length;
-    // Восстановить режим % или ₽
-    const savedMode = localStorage.getItem('prize_mode')||'pct';
-    _prizeMode = savedMode;
-    const rawConfig = s.prize_config||'60,30,10';
-    const isRubStored = rawConfig.startsWith('rub:');
+    document.getElementById('s-fee').value = fee;
+    // Определяем режим и значения
+    const raw = s.prize_config || '60,30,10';
+    const isRubStored = raw.startsWith('rub:');
     if(isRubStored){
-      // Значения в рублях — загружаем напрямую
-      _prizeMode = 'rub';
-      localStorage.setItem('prize_mode','rub');
-      const rubPlaces = rawConfig.replace('rub:','').split(',').map(p=>parseInt(p)||0);
-      savePlacesToUI(rubPlaces);
+      PRIZE_MODE = 'rub';
+      PRIZE_VALUES = raw.replace('rub:','').split(',').map(v=>parseInt(v)||0);
     } else {
-      const places = rawConfig.split(',').map(p=>parseFloat(p.trim()));
-      if(savedMode==='rub'){
-        // Старый формат % — конвертируем в ₽
-        const n2 = parseInt(nEl?.value)||pRows.length||1;
+      PRIZE_MODE = localStorage.getItem('prize_mode') || 'pct';
+      PRIZE_VALUES = raw.split(',').map(v=>parseFloat(v)||0);
+      if(PRIZE_MODE === 'rub'){
+        // Конвертируем % в ₽
+        const pRows = document.querySelectorAll('#players-table tr');
+        const n2 = pRows.length || 1;
         const fund2 = fee * n2;
-        const rubPlaces = places.map(pct=>Math.round(fund2*pct/100));
-        savePlacesToUI(rubPlaces);
-      } else {
-        savePlacesToUI(places);
+        PRIZE_VALUES = PRIZE_VALUES.map(p => Math.round(fund2 * p / 100));
       }
     }
-    // Обновить вид кнопок режима (без перерендера — данные уже загружены)
-    setPrizeMode(_prizeMode, true);
-  }catch(e){ renderPrizePlaces(); }
+    // Устанавливаем кол-во участников
+    const pRows = document.querySelectorAll('#players-table tr');
+    const nEl = document.getElementById('s-players');
+    if(nEl && pRows.length > 0) nEl.value = pRows.length;
+    // Активируем нужный режим и рендерим
+    switchPrizeMode(PRIZE_MODE);
+  }catch(e){ renderPrizeRows(); }
   await loadAdminMatches();
 }
 
