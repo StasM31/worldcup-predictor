@@ -1697,9 +1697,17 @@ async function loadRules(){
     const n = lb.length;
     const fee = settings.entry_fee || 15000;
     const fund = n * fee;
-    const prizeConf = (settings.prize_config||'60,30,10').split(',').map(p=>parseFloat(p.trim()));
-    const isPercent = prizeConf.every(p=>p<=100);
-    const prizes = prizeConf.map(p=> isPercent ? Math.round(fund*p/100) : parseInt(p));
+    const rawConf = settings.prize_config||'60,30,10';
+    const isRubConf = rawConf.startsWith('rub:');
+    let prizeConf, isPercent;
+    if(isRubConf){
+      prizeConf = rawConf.replace('rub:','').split(',').map(p=>parseInt(p)||0);
+      isPercent = false;
+    } else {
+      prizeConf = rawConf.split(',').map(p=>parseFloat(p.trim()));
+      isPercent = true;
+    }
+    const prizes = isPercent ? prizeConf.map(p=>Math.round(fund*p/100)) : prizeConf;
     const p1 = (prizes[0]||0).toLocaleString('ru');
     const p2 = (prizes[1]||0).toLocaleString('ru');
     const p3 = (prizes[2]||0).toLocaleString('ru');
@@ -2049,15 +2057,25 @@ async function loadAdmin(){
     // Восстановить режим % или ₽
     const savedMode = localStorage.getItem('prize_mode')||'pct';
     _prizeMode = savedMode;
-    const places = (s.prize_config||'60,30,10').split(',').map(p=>parseFloat(p.trim()));
-    if(savedMode==='rub'){
-      // Конвертируем % обратно в ₽
-      const n2 = parseInt(nEl?.value)||pRows.length||1;
-      const fund2 = fee * n2;
-      const rubPlaces = places.map(pct=>Math.round(fund2*pct/100));
+    const rawConfig = s.prize_config||'60,30,10';
+    const isRubStored = rawConfig.startsWith('rub:');
+    if(isRubStored){
+      // Значения в рублях — загружаем напрямую
+      _prizeMode = 'rub';
+      localStorage.setItem('prize_mode','rub');
+      const rubPlaces = rawConfig.replace('rub:','').split(',').map(p=>parseInt(p)||0);
       savePlacesToUI(rubPlaces);
     } else {
-      savePlacesToUI(places);
+      const places = rawConfig.split(',').map(p=>parseFloat(p.trim()));
+      if(savedMode==='rub'){
+        // Старый формат % — конвертируем в ₽
+        const n2 = parseInt(nEl?.value)||pRows.length||1;
+        const fund2 = fee * n2;
+        const rubPlaces = places.map(pct=>Math.round(fund2*pct/100));
+        savePlacesToUI(rubPlaces);
+      } else {
+        savePlacesToUI(places);
+      }
     }
     // Обновить вид кнопок режима
     setPrizeMode(_prizeMode);
@@ -2466,7 +2484,11 @@ async function loadWinners(){
     const archive = await api('/api/archive');
     const n = lb.length;
     const fund = n * 15000;
-    const prizes = [Math.round(fund*0.60), Math.round(fund*0.30), Math.round(fund*0.10)];
+    const rawPrizeConf = (await api('/api/tournament-settings').catch(()=>({prize_config:'60,30,10'}))).prize_config || '60,30,10';
+    const isRubPrize = rawPrizeConf.startsWith('rub:');
+    const prizes = isRubPrize
+      ? rawPrizeConf.replace('rub:','').split(',').map(p=>parseInt(p)||0)
+      : rawPrizeConf.split(',').map(p=>Math.round(fund*parseFloat(p)/100));
     const medals = ['🥇','🥈','🥉'];
     const podiumOrder = [1,0,2]; // 2nd, 1st, 3rd для визуального пьедестала
 
