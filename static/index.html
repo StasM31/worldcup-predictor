@@ -2054,6 +2054,7 @@ async function loadAdmin(){
     // Активируем нужный режим и рендерим
     switchPrizeMode(PRIZE_MODE);
   }catch(e){ renderPrizeRows(); }
+  await loadPlayersTable();
   await loadAdminMatches();
 }
 
