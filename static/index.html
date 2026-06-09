@@ -1859,6 +1859,9 @@ let _prizeMode = 'pct'; // 'pct' = проценты, 'rub' = рубли
 function setPrizeMode(mode, skipRender){
   _prizeMode = mode;
   localStorage.setItem('prize_mode', mode);
+  // Сохраняем в data-атрибут — читается при сохранении
+  const container = document.getElementById('prize-places');
+  if(container) container.dataset.mode = mode;
   // Update toggle buttons with clear active state
   const pctBtn = document.getElementById('mode-pct');
   const rubBtn = document.getElementById('mode-rub');
@@ -1889,6 +1892,8 @@ function savePlacesToUI(places){
       <span style="color:var(--muted);min-width:14px">${isRub?'₽':'%'}</span>
       <span id="prize-amt-${i}" style="font-size:13px;font-weight:700;color:var(--green);min-width:90px"></span>
     </div>`).join('');
+  // Сохраняем data-mode после перезаписи innerHTML
+  container.dataset.mode = _prizeMode;
   updatePrizeUI();
 }
 
@@ -1978,9 +1983,9 @@ async function savePrizeSettings(){
   const n=parseInt(nEl?.value)||1;
   const fund=fee*n;
   const places=getPrizePlaces();
-  // Читаем режим из скрытого поля (надёжнее чем глобальная переменная)
-  const modeInput = document.getElementById('prize-mode-input');
-  const isRub = (modeInput ? modeInput.value : _prizeMode) === 'rub';
+  // Определяем режим надёжно через data-атрибут контейнера
+  const prizeContainer = document.getElementById('prize-places');
+  const isRub = prizeContainer?.dataset.mode === 'rub';
   let prizeConfig;
   if(isRub){
     if(fund<=0){toast('Укажи взнос и кол-во участников','err');return;}
