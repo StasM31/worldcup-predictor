@@ -829,8 +829,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
             <label style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600">Призовые места</label>
             <div style="display:flex;gap:6px;align-items:center">
-              <input type="hidden" id="prize-mode-input" value="pct">
-              <div style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+              <div id="prize-mode-toggle" data-mode="pct" style="display:flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
                 <button id="mode-pct" onclick="setPrizeMode('pct')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:#2563eb;color:#fff;transition:all .15s">%</button>
                 <button id="mode-rub" onclick="setPrizeMode('rub')" style="padding:6px 14px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);transition:all .15s">₽</button>
               </div>
@@ -1857,21 +1856,23 @@ const PLACE_MEDALS=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣'
 let _prizeMode = 'pct'; // 'pct' = проценты, 'rub' = рубли
 
 function setPrizeMode(mode, skipRender){
-  _prizeMode = mode;
+  // Сохраняем режим в DOM элементе - единственный источник правды
+  const toggle = document.getElementById('prize-mode-toggle');
+  if(toggle) toggle.dataset.mode = mode;
   localStorage.setItem('prize_mode', mode);
-  // Сохраняем в data-атрибут — читается при сохранении
-  const container = document.getElementById('prize-places');
-  if(container) container.dataset.mode = mode;
-  // Update toggle buttons with clear active state
   const pctBtn = document.getElementById('mode-pct');
   const rubBtn = document.getElementById('mode-rub');
   if(pctBtn){pctBtn.style.background=mode==='pct'?'#2563eb':'transparent';pctBtn.style.color=mode==='pct'?'#fff':'var(--text2)';}
   if(rubBtn){rubBtn.style.background=mode==='rub'?'#16a34a':'transparent';rubBtn.style.color=mode==='rub'?'#fff':'var(--text2)';}
-  // Re-render places only if not loading from server
   if(!skipRender){
     const places = getPrizePlaces();
     savePlacesToUI(places);
   }
+}
+
+function getCurrentMode(){
+  const toggle = document.getElementById('prize-mode-toggle');
+  return toggle ? toggle.dataset.mode : localStorage.getItem('prize_mode') || 'pct';
 }
 
 function getPrizePlaces(){
@@ -1883,7 +1884,7 @@ function getPrizePlaces(){
 function savePlacesToUI(places){
   const container=document.getElementById('prize-places');
   if(!container) return;
-  const isRub = _prizeMode==='rub';
+  const isRub = getCurrentMode()==='rub';
   container.innerHTML=places.map((val,i)=>`
     <div style="display:flex;align-items:center;gap:10px">
       <span style="font-size:18px;width:28px;text-align:center">${PLACE_MEDALS[i]||'•'}</span>
@@ -1921,7 +1922,7 @@ function updatePrizeUI(){
   const n=manualN>0?manualN:(playerRows.length>0?playerRows.length:Math.max(_lbRows.length,1));
   const fund=fee*n;
   const places=getPrizePlaces();
-  const isRub=_prizeMode==='rub';
+  const isRub=getCurrentMode()==='rub';
   const warn=document.getElementById('prize-sum-warn');
   const preview=document.getElementById('prize-preview');
 
@@ -1984,8 +1985,7 @@ async function savePrizeSettings(){
   const fund=fee*n;
   const places=getPrizePlaces();
   // Определяем режим надёжно через data-атрибут контейнера
-  const prizeContainer = document.getElementById('prize-places');
-  const isRub = prizeContainer?.dataset.mode === 'rub';
+  const isRub = getCurrentMode() === 'rub';
   let prizeConfig;
   if(isRub){
     if(fund<=0){toast('Укажи взнос и кол-во участников','err');return;}
