@@ -1849,6 +1849,7 @@ let _prizeMode = 'pct'; // 'pct' = проценты, 'rub' = рубли
 
 function setPrizeMode(mode){
   _prizeMode = mode;
+  localStorage.setItem('prize_mode', mode);
   // Update toggle buttons with clear active state
   const pctBtn = document.getElementById('mode-pct');
   const rubBtn = document.getElementById('mode-rub');
@@ -2045,8 +2046,21 @@ async function loadAdmin(){
     const pRows = document.querySelectorAll('#players-table tr');
     const nEl = document.getElementById('s-players');
     if(nEl && pRows.length>0) nEl.value = pRows.length;
+    // Восстановить режим % или ₽
+    const savedMode = localStorage.getItem('prize_mode')||'pct';
+    _prizeMode = savedMode;
     const places = (s.prize_config||'60,30,10').split(',').map(p=>parseFloat(p.trim()));
-    savePlacesToUI(places);
+    if(savedMode==='rub'){
+      // Конвертируем % обратно в ₽
+      const n2 = parseInt(nEl?.value)||pRows.length||1;
+      const fund2 = fee * n2;
+      const rubPlaces = places.map(pct=>Math.round(fund2*pct/100));
+      savePlacesToUI(rubPlaces);
+    } else {
+      savePlacesToUI(places);
+    }
+    // Обновить вид кнопок режима
+    setPrizeMode(_prizeMode);
   }catch(e){ renderPrizePlaces(); }
   await loadAdminMatches();
 }
