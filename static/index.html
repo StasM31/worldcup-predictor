@@ -1962,12 +1962,26 @@ function updatePrizeUI(){
 
 async function savePrizeSettings(){
   const fee=parseInt(document.getElementById('s-fee').value)||15000;
+  const nEl=document.getElementById('s-players');
+  const n=parseInt(nEl?.value)||1;
+  const fund=fee*n;
   const places=getPrizePlaces();
-  const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
-  if(Math.abs(total-100)>0.1){toast(`Сумма % = ${total}, должно быть 100`,'err');return;}
+  const isRub=_prizeMode==='rub';
+  let prizeConfig;
+  if(isRub){
+    if(fund<=0){toast('Укажи взнос и кол-во участников','err');return;}
+    const totalRub=places.reduce((s,p)=>s+p,0);
+    if(totalRub>fund+1){toast(`Сумма призов (${totalRub.toLocaleString('ru')} ₽) превышает фонд (${fund.toLocaleString('ru')} ₽)`,'err');return;}
+    const pcts=places.map(amt=>Math.round(amt/fund*1000)/10);
+    prizeConfig=pcts.join(',');
+  } else {
+    const total=Math.round(places.reduce((s,p)=>s+p,0)*10)/10;
+    if(Math.abs(total-100)>0.1){toast(`Сумма % = ${total}, должно быть 100`,'err');return;}
+    prizeConfig=places.join(',');
+  }
   const res=await fetch('/api/admin/tournament-settings',{
     method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
-    body:JSON.stringify({entry_fee:fee,prize_config:places.join(',')})
+    body:JSON.stringify({entry_fee:fee,prize_config:prizeConfig,hide_days:state.hideDays||0})
   });
   if(res.ok) toast('💾 Настройки сохранены!','ok');
   else toast('Ошибка','err');
