@@ -1864,15 +1864,8 @@ function switchPrizeMode(mode){
   document.getElementById('btn-mode-pct').style.color = mode==='pct'?'#fff':'var(--text2)';
   document.getElementById('btn-mode-rub').style.background = mode==='rub'?'#16a34a':'transparent';
   document.getElementById('btn-mode-rub').style.color = mode==='rub'?'#fff':'var(--text2)';
-  // Конвертируем текущие значения при смене режима
-  const fee = parseInt(document.getElementById('s-fee')?.value)||15000;
-  const n = parseInt(document.getElementById('s-players')?.value)||1;
-  const fund = fee * n;
-  if(mode==='rub' && fund > 0){
-    PRIZE_VALUES = PRIZE_VALUES.map(v => Math.round(fund * v / 100));
-  } else if(mode==='pct' && fund > 0){
-    PRIZE_VALUES = PRIZE_VALUES.map(v => Math.round(v / fund * 100 * 10) / 10);
-  }
+  // При переключении просто сбрасываем значения — пусть вводит заново
+  PRIZE_VALUES = PRIZE_VALUES.map(()=>0);
   renderPrizeRows();
 }
 
