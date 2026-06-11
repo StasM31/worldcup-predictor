@@ -729,6 +729,7 @@ def leaderboard(token: str):
                    CASE WHEN COUNT(p.id)>0 THEN ROUND(100.0*SUM(CASE WHEN p.points>0 THEN 1 ELSE 0 END)/COUNT(p.id),1) ELSE 0 END as hit_pct,
                    COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as tournament_bonus
             FROM players pl LEFT JOIN predictions p ON pl.id=p.player_id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
             GROUP BY pl.id ORDER BY total_points DESC""").fetchall()
     return [dict(r) for r in rows]
 
