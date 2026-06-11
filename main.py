@@ -181,7 +181,7 @@ async def broadcast_predictions(match_id):
         match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         preds = db.execute("""SELECT pl.name,p.home_score,p.away_score,p.is_vabank
             FROM predictions p JOIN players pl ON p.player_id=pl.id WHERE p.match_id=?""", (match_id,)).fetchall()
-        all_players = db.execute("SELECT id,name,telegram_chat_id FROM players").fetchall()
+        all_players = db.execute("SELECT id,name,telegram_chat_id FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
     if not match: return
     pred_map = {p["name"]: p for p in preds}
     home = team_with_flag(match['home_team'])
@@ -200,6 +200,10 @@ async def broadcast_predictions(match_id):
 
 def check_and_broadcast(match_id):
     with get_db() as db:
+        match = db.execute("SELECT status FROM matches WHERE id=?", (match_id,)).fetchone()
+        # Рассылаем только если матч уже начался (grace или live)
+        if not match or match["status"] not in ("grace", "live"):
+            return
         total = db.execute("SELECT COUNT(*) FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchone()[0]
         done = db.execute("SELECT COUNT(*) FROM predictions WHERE match_id=?", (match_id,)).fetchone()[0]
     if total > 0 and done >= total:
