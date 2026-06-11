@@ -685,12 +685,7 @@ def add_player(body: PlayerIn):
 @app.get("/api/admin/players", dependencies=[Depends(require_admin)])
 def get_players():
     with get_db() as db:
-        rows = db.execute(
-            """SELECT p.id, p.name, p.telegram_chat_id, p.token, p.last_seen,
-               CASE WHEN tp.player_id IS NOT NULL THEN 1 ELSE 0 END as has_tourn_pred
-               FROM players p
-               LEFT JOIN tournament_predictions tp ON p.id = tp.player_id"""
-        ).fetchall()
+        rows = db.execute("SELECT id,name,telegram_chat_id,token,last_seen FROM players").fetchall()
     return [dict(r) for r in rows]
 
 @app.delete("/api/admin/players/{player_id}", dependencies=[Depends(require_admin)])
