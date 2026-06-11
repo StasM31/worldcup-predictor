@@ -1114,6 +1114,7 @@ function enterApp(){
   // Загружаем hideDays и матчи параллельно
   api('/api/tournament-settings').then(s=>{
     state.hideDays = s.hide_days||0;
+    state.playerCount = s.player_count||0;
   }).catch(()=>{}).finally(()=>loadMatches());
   showTgBanner();
   setTimeout(()=>{ensureAutoUpdateBar();startAutoUpdate();}, 800);
@@ -2071,8 +2072,8 @@ async function loadPlayersTable(){
   const players=await fetch('/api/admin/players',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
   const origin=location.origin;
   document.getElementById('players-table').innerHTML=players.map(p=>`
-    <tr>
-      <td><strong>${p.name}</strong></td>
+    <tr class="${p.is_guest?'is-guest':''}">
+      <td><strong>${p.name}</strong>${p.is_guest?' <span style="font-size:10px;color:var(--muted);font-weight:400">(гость)</span>':''}</td>
       <td><span class="token-pill" onclick="copyLink('${origin}?token=${p.token}')">${p.token}</span></td>
       <td class="${p.telegram_chat_id?'tg-ok':'tg-no'}">${p.telegram_chat_id?'✅ Подключён':'⏳ Нет'}</td>
       <td style="font-size:12px">${p.has_tourn_pred?'<span style="color:var(--green)">✅ Сделан</span>':'<span style="color:var(--muted)">⏳ Нет</span>'}</td>
@@ -2085,6 +2086,21 @@ async function loadPlayersTable(){
     </tr>`).join('');
 }
 function copyLink(url){navigator.clipboard.writeText(url);toast('Скопировано!','info');}
+async function toggleGuest(id, currentIsGuest){
+  const makeGuest = !currentIsGuest;
+  const msg = makeGuest
+    ? 'Сделать гостем? Участник не будет считаться в призовом фонде и рассылках.'
+    : 'Снять гостевой доступ и сделать полноправным участником?';
+  if(!confirm(msg)) return;
+  const res = await fetch('/api/admin/players/'+id+'/guest', {
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body: JSON.stringify({is_guest: makeGuest})
+  });
+  if(res.ok){ toast(makeGuest?'👁 Гостевой доступ установлен':'✅ Полный доступ восстановлен','ok'); await loadPlayersTable(); }
+  else toast('Ошибка','err');
+}
+
 async function deletePlayer(id, name){
   if(!confirm(`Удалить участника "${name}"?\n\nВсе его прогнозы и очки тоже удалятся.`))return;
   const res=await fetch(`/api/admin/players/${id}`,{method:'DELETE',headers:{'x-admin-token':state.adminToken}});

@@ -226,6 +226,7 @@ async def send_longterm_after_start():
     await asyncio.sleep(5)
     with get_db() as db:
         players = db.execute("SELECT * FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
+        n = len(players)
         preds = db.execute("""
             SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer
             FROM tournament_predictions tp
@@ -992,7 +993,10 @@ def get_tournament_settings(token: str):
     get_player_by_token(token)
     with get_db() as db:
         row = db.execute("SELECT * FROM tournament_settings WHERE id=1").fetchone()
-    return dict(row) if row else {"entry_fee": 15000, "prize_config": "60,30,10"}
+        player_count = db.execute("SELECT COUNT(*) FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchone()[0]
+    result = dict(row) if row else {"entry_fee": 15000, "prize_config": "60,30,10", "hide_days": 0}
+    result["player_count"] = player_count
+    return result
 
 class TournamentSettingsIn(BaseModel):
     entry_fee: int
