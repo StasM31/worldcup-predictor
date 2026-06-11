@@ -847,7 +847,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
 <div class="admin-block">
         <h3>👥 Участники</h3>
         <div class="form-row"><input id="p-name" placeholder="Имя участника"><button class="btn btn-primary" onclick="addPlayer()">Добавить</button></div>
-        <table class="adm-table"><thead><tr><th>Имя</th><th>Токен</th><th>Telegram</th><th>Последний вход</th><th></th></tr></thead><tbody id="players-table"></tbody></table>
+        <table class="adm-table"><thead><tr><th>Имя</th><th>Токен</th><th>Telegram</th><th>Ставка на финал</th><th>Последний вход</th><th></th></tr></thead><tbody id="players-table"></tbody></table>
       </div>
       <div class="admin-block">
         <h3>➕ Добавить один матч</h3>
@@ -2073,6 +2073,7 @@ async function loadPlayersTable(){
       <td><strong>${p.name}</strong></td>
       <td><span class="token-pill" onclick="copyLink('${origin}?token=${p.token}')">${p.token}</span></td>
       <td class="${p.telegram_chat_id?'tg-ok':'tg-no'}">${p.telegram_chat_id?'✅ Подключён':'⏳ Нет'}</td>
+      <td style="font-size:12px">${p.has_tourn_pred?'<span style="color:var(--green)">✅ Сделан</span>':'<span style="color:var(--muted)">⏳ Нет</span>'}</td>
       <td style="font-size:12px;color:var(--muted)">${p.last_seen||'—'}</td>
       <td style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="copyLink('${origin}?token=${p.token}')">📋</button>
