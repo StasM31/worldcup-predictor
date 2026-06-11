@@ -200,7 +200,7 @@ async def broadcast_predictions(match_id):
 
 def check_and_broadcast(match_id):
     with get_db() as db:
-        total = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+        total = db.execute("SELECT COUNT(*) FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchone()[0]
         done = db.execute("SELECT COUNT(*) FROM predictions WHERE match_id=?", (match_id,)).fetchone()[0]
     if total > 0 and done >= total:
         asyncio.create_task(broadcast_predictions(match_id))
@@ -707,7 +707,7 @@ def match_predictions(match_id: int, token: str):
     with get_db() as db:
         match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         if not match: raise HTTPException(404)
-        total = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+        total = db.execute("SELECT COUNT(*) FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchone()[0]
         done = db.execute("SELECT COUNT(*) FROM predictions WHERE match_id=?", (match_id,)).fetchone()[0]
         if match["status"]=="upcoming":
             return {"hidden":True,"reason":f"Прогнозы скрыты до начала матча • {done}/{total} сделали ставку"}
@@ -792,7 +792,7 @@ def get_all_tournament_predictions(token: str):
     player = get_player_by_token(token)
     with get_db() as db:
         started = db.execute("SELECT COUNT(*) FROM matches WHERE status != 'upcoming'").fetchone()[0] > 0
-        total_players = db.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+        total_players = db.execute("SELECT COUNT(*) FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchone()[0]
         done_players = db.execute("SELECT COUNT(*) FROM tournament_predictions").fetchone()[0]
         rows = db.execute("""SELECT pl.name,tp.champion,tp.finalist1,tp.finalist2,tp.top_scorer,
                    tp.champion_pts,tp.finalist_pts,tp.scorer_pts,pl.id as player_id
