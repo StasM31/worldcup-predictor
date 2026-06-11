@@ -1085,7 +1085,7 @@ async function login(){
 function showTgBanner(){
   const wrap = document.getElementById('tg-connect-banner-wrap');
   if(!wrap) return;
-  if(state.isAdmin || state.tgConnected){wrap.innerHTML='';return;}
+  if(state.isAdmin || state.tgConnected || state.isGuest){wrap.innerHTML='';return;}
   const botLink = state.botUsername
     ? `https://t.me/${state.botUsername}?start=${state.token}`
     : '#';
