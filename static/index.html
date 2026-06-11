@@ -889,6 +889,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
           <button class="btn btn-primary" onclick="sendDigest()">📊 Отправить таблицу сейчас</button>
           <button class="btn btn-ghost" onclick="sendBackup()">🗄 Сохранить бэкап сейчас</button>
           <button class="btn btn-gold" onclick="sendTournReminder()">📣 Напомнить про ставку на финал</button>
+          <button class="btn btn-ghost" onclick="showCustomBroadcast()" style="border-color:var(--blue);color:var(--blue)">✉️ Написать всем участникам</button>
         </div>
         <p class="hint" style="margin-top:10px">🗄 Бэкап базы данных автоматически отправляется тебе в Telegram каждую ночь в <strong>03:00 МСК</strong>.<br><br>
         Чтобы настроить бэкап, сделай один раз:<br>
@@ -2159,6 +2160,45 @@ async function addBatch(){
   if(res.ok){const d=await res.json();document.getElementById('batch-input').value='';toast(`Добавлено: ${d.added} матчей ✅`);loadAdminMatches();loadMatches();}
   else toast('Ошибка','err');
 }
+function showCustomBroadcast(){
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `<div class="modal" style="max-width:420px">
+    <div class="modal-body" style="padding:24px">
+      <h3 style="margin-bottom:16px;font-family:'Oswald',sans-serif">✉️ Написать всем участникам</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Сообщение получат все участники у кого подключён Telegram (гости не получат).</p>
+      <textarea id="custom-msg" rows="6" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:13px;resize:vertical"></textarea>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button onclick="this.closest('.modal-overlay').remove()" style="flex:1;padding:11px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:'Manrope',sans-serif">Отмена</button>
+        <button onclick="sendCustomBroadcast(this)" style="flex:1;padding:11px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif">📤 Отправить</button>
+      </div>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+async function sendCustomBroadcast(btn){
+  const text = document.getElementById('custom-msg').value.trim();
+  if(!text){toast('Введи текст сообщения','err');return;}
+  btn.textContent = '⏳ Отправляем...';
+  btn.disabled = true;
+  const res = await fetch('/api/admin/send-custom',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
+    body: JSON.stringify({text})
+  });
+  if(res.ok){
+    const d = await res.json();
+    document.querySelector('.modal-overlay')?.remove();
+    toast(`✉️ Отправлено ${d.sent} участникам!`,'ok');
+  } else {
+    toast('Ошибка отправки','err');
+    btn.textContent = '📤 Отправить';
+    btn.disabled = false;
+  }
+}
+
 async function sendDigest(){
   if(!confirm('Отправить таблицу лидеров всем участникам в Telegram прямо сейчас?'))return;
   const res=await fetch('/api/admin/send-digest',{method:'POST',headers:{'x-admin-token':state.adminToken}});
