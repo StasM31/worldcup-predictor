@@ -371,8 +371,11 @@ async def send_welcome_broadcast():
     n = len(players)
     fee = settings["entry_fee"] if settings else 15000
     fund = n * fee
-    prize_conf = (settings["prize_config"] if settings else "60,30,10").split(",")
-    prizes = [f"{PLACE_MEDALS[i]} {int(fund*float(p)/100):,} ₽".replace(",", " ") for i,p in enumerate(prize_conf[:3])]
+    raw_conf = settings["prize_config"] if settings else "60,30,10"
+    if raw_conf.startswith("rub:"):
+        prizes = [f"{PLACE_MEDALS[i]} {int(x):,} ₽".replace(",", " ") for i,x in enumerate(raw_conf.replace("rub:","").split(",")[:4])]
+    else:
+        prizes = [f"{PLACE_MEDALS[i]} {int(fund*float(p)/100):,} ₽".replace(",", " ") for i,p in enumerate(raw_conf.split(",")[:4])]
     home = team_with_flag(first["home_team"]) if first else ""
     away = team_with_flag(first["away_team"]) if first else ""
 
