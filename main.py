@@ -603,6 +603,16 @@ async def manual_digest():
 async def manual_backup():
     await send_backup(); return {"ok":True}
 
+@app.post("/api/admin/send-custom", dependencies=[Depends(require_admin)])
+async def send_custom_broadcast(body: dict):
+    text = body.get("text","")
+    if not text: raise HTTPException(400,"Текст не может быть пустым")
+    with get_db() as db:
+        players = db.execute("SELECT * FROM players WHERE (is_guest=0 OR is_guest IS NULL) AND telegram_chat_id IS NOT NULL").fetchall()
+    tasks = [send_telegram(str(p["telegram_chat_id"]), text) for p in players]
+    if tasks: await asyncio.gather(*tasks)
+    return {"ok": True, "sent": len(players)}
+
 @app.post("/api/admin/send-tourn-reminder", dependencies=[Depends(require_admin)])
 async def send_tourn_reminder():
     """Напоминание о ставке на финал — только тем, кто её не сделал."""
