@@ -1695,7 +1695,7 @@ async function loadRules(){
   try{
     const lb = await api('/api/leaderboard');
     const settings = await api('/api/tournament-settings');
-    const n = lb.length;
+    const n = settings.player_count || lb.length;
     const fee = settings.entry_fee || 15000;
     const fund = n * fee;
     const rawConf = settings.prize_config||'60,30,10';
