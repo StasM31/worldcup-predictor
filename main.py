@@ -286,6 +286,57 @@ async def auto_start_scheduler():
             print(f"Scheduler error: {e}")
         await asyncio.sleep(30)
 
+async def tourn_pred_reminder_scheduler():
+    """В 19:00 МСК (за 3 часа до первого матча) напоминает тем, кто не сделал ставку на финал."""
+    await asyncio.sleep(30)
+    sent = False
+    while True:
+        try:
+            if not sent:
+                now_msk = datetime.now(timezone.utc) + timedelta(hours=3)
+                with get_db() as db:
+                    first = db.execute(
+                        "SELECT match_time FROM matches WHERE status='upcoming' ORDER BY match_time ASC LIMIT 1"
+                    ).fetchone()
+                if first:
+                    mt = parse_dt(first["match_time"])
+                    # Отправляем когда наступило 19:00 МСК в день первого матча (но до его старта)
+                    if mt and now_msk.strftime("%Y-%m-%d") == mt.strftime("%Y-%m-%d") \
+                       and now_msk.hour >= 19 \
+                       and now_msk.replace(tzinfo=None) < mt.replace(tzinfo=None):
+                        sent = True
+                        await send_tourn_pred_reminder()
+        except Exception as e:
+            print(f"Tourn reminder scheduler error: {e}")
+        await asyncio.sleep(60)
+
+async def send_tourn_pred_reminder():
+    """Напоминание только тем, у кого нет долгосрочного прогноза."""
+    with get_db() as db:
+        players = db.execute(
+            "SELECT p.* FROM players p "
+            "LEFT JOIN tournament_predictions tp ON p.id = tp.player_id "
+            "WHERE tp.player_id IS NULL AND p.telegram_chat_id IS NOT NULL"
+        ).fetchall()
+    if not players:
+        print("Tourn reminder: everyone has predictions, skipping")
+        return
+    text = "\n".join([
+        "⏰ <b>Напоминание!</b>",
+        "",
+        "Ты ещё не сделал <b>долгосрочный прогноз на турнир</b> 🏆",
+        "",
+        "Зайди на вкладку <b>«Ставка на финал»</b> и угадай:",
+        "  🥇 Чемпиона (+10 очков)",
+        "  🥈 Финалистов (+5 за каждого)",
+        "  🥉 Команду на 3-м месте (+5 очков)",
+        "",
+        "⚽ Первый матч сегодня в 22:00 МСК — после его старта ставка закроется НАВСЕГДА!",
+    ])
+    tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players]
+    await asyncio.gather(*tasks)
+    print(f"Tourn reminder sent to {len(players)} players")
+
 async def welcome_broadcast_scheduler():
     """За час до первого матча турнира отправляет приветственное сообщение."""
     from datetime import timedelta
@@ -415,6 +466,56 @@ async def daily_digest_scheduler():
             print(f"Digest error: {e}")
         await asyncio.sleep(30)
 
+async def tourn_reminder_scheduler():
+    """Напоминание о ставке на финал в 20:00 МСК — только тем, кто не сделал."""
+    from datetime import timedelta
+    await asyncio.sleep(15)
+    last_sent = None
+    while True:
+        try:
+            now_msk = (datetime.now(timezone.utc)+timedelta(hours=3)).replace(tzinfo=None)
+            today = now_msk.date()
+            if now_msk.hour==20 and now_msk.minute<1 and last_sent!=today:
+                # Проверяем есть ли те кто не сделал прогноз и турнир ещё не начался
+                with get_db() as db:
+                    pending = db.execute(
+                        "SELECT p.* FROM players p "
+                        "LEFT JOIN tournament_predictions tp ON p.id=tp.player_id "
+                        "WHERE tp.player_id IS NULL AND p.telegram_chat_id IS NOT NULL"
+                    ).fetchall()
+                    not_started = db.execute(
+                        "SELECT COUNT(*) FROM matches WHERE status != 'upcoming'"
+                    ).fetchone()[0] == 0
+                if pending and not_started:
+                    last_sent = today
+                    first = None
+                    with get_db() as db:
+                        first = db.execute(
+                            "SELECT * FROM matches ORDER BY match_time ASC LIMIT 1"
+                        ).fetchone()
+                    when = ""
+                    if first:
+                        mt = parse_dt(first["match_time"])
+                        if mt:
+                            when = f" сегодня в {mt.strftime('%H:%M')} МСК"
+                    text = (
+                        "⏰ <b>Напоминание!</b>\n\n"
+                        "Ты ещё не сделал <b>долгосрочный прогноз</b> на турнир!\n\n"
+                        "🏆 Чемпион — +10 очков\n"
+                        "🥈 Финалисты — +5 очков за каждого\n"
+                        "🥉 3-е место — +5 очков\n\n"
+                        f"⚽ Первый матч начнётся{when} — после его старта ставка на финал закроется <b>навсегда</b>!\n\n"
+                        "Зайди на сайт → вкладка «Ставка на финал» 🌍"
+                    )
+                    tasks = [send_telegram(str(p["telegram_chat_id"]), text) for p in pending]
+                    await asyncio.gather(*tasks)
+                    print(f"Tourn reminder sent to {len(pending)} players")
+                elif not not_started:
+                    last_sent = today  # турнир уже начался — больше не напоминаем
+        except Exception as e:
+            print(f"Tourn reminder error: {e}")
+        await asyncio.sleep(30)
+
 async def send_daily_digest():
     from datetime import timedelta
     with get_db() as db:
@@ -475,6 +576,8 @@ async def startup():
     asyncio.create_task(daily_digest_scheduler())
     asyncio.create_task(daily_backup_scheduler())
     asyncio.create_task(welcome_broadcast_scheduler())
+    asyncio.create_task(tourn_reminder_scheduler())
+    asyncio.create_task(tourn_pred_reminder_scheduler())
 
 @app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
 async def manual_digest():
@@ -483,6 +586,36 @@ async def manual_digest():
 @app.post("/api/admin/send-backup", dependencies=[Depends(require_admin)])
 async def manual_backup():
     await send_backup(); return {"ok":True}
+
+@app.post("/api/admin/send-tourn-reminder", dependencies=[Depends(require_admin)])
+async def send_tourn_reminder():
+    """Напоминание о ставке на финал — только тем, кто её не сделал."""
+    with get_db() as db:
+        players = db.execute(
+            "SELECT p.* FROM players p "
+            "LEFT JOIN tournament_predictions tp ON p.id = tp.player_id "
+            "WHERE tp.player_id IS NULL AND p.telegram_chat_id IS NOT NULL"
+        ).fetchall()
+        first = db.execute("SELECT * FROM matches WHERE status='upcoming' ORDER BY match_time ASC LIMIT 1").fetchone()
+    if not players:
+        return {"ok": True, "sent": 0}
+    when = ""
+    if first:
+        mt = parse_dt(first["match_time"])
+        if mt:
+            when = f" сегодня в {mt.strftime('%H:%M')} МСК"
+    text = (
+        "⏰ <b>Напоминание!</b>\n\n"
+        "Ты ещё не сделал <b>долгосрочный прогноз</b> на турнир!\n\n"
+        "🏆 Чемпион — +10 очков\n"
+        "🥈 Финалисты — +5 очков за каждого\n"
+        "🥉 3-е место — +5 очков\n\n"
+        f"⚽ Первый матч начнётся{when} — после его старта ставка на финал закроется <b>навсегда</b>!\n\n"
+        "Зайди на сайт → вкладка «Ставка на финал» 🌍"
+    )
+    tasks = [send_telegram(str(p["telegram_chat_id"]), text) for p in players]
+    await asyncio.gather(*tasks)
+    return {"ok": True, "sent": len(players)}
 
 # ── Player endpoints ──
 class PredictionIn(BaseModel):
