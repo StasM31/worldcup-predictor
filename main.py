@@ -831,7 +831,7 @@ def add_player(body: PlayerIn):
 def get_players():
     with get_db() as db:
         rows = db.execute(
-            "SELECT p.id, p.name, p.telegram_chat_id, p.token, p.last_seen, "
+            "SELECT p.id, p.name, p.telegram_chat_id, p.token, p.last_seen, p.is_guest, "
             "CASE WHEN tp.player_id IS NOT NULL THEN 1 ELSE 0 END as has_tourn_pred "
             "FROM players p LEFT JOIN tournament_predictions tp ON p.id = tp.player_id"
         ).fetchall()
