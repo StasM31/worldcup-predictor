@@ -40,7 +40,8 @@ def init_db():
             name TEXT UNIQUE NOT NULL,
             telegram_chat_id TEXT,
             token TEXT UNIQUE NOT NULL,
-            last_seen TEXT
+            last_seen TEXT,
+            is_guest INTEGER DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS matches (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,6 +105,12 @@ except:
 try:
     with get_db() as _db:
         _db.execute("ALTER TABLE players ADD COLUMN last_seen TEXT")
+except:
+    pass
+# Migration: add is_guest if missing
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE players ADD COLUMN is_guest INTEGER DEFAULT 0")
 except:
     pass
 
@@ -218,7 +225,7 @@ async def send_longterm_after_start():
     """Отправляет долгосрочные прогнозы сразу после старта первого матча."""
     await asyncio.sleep(5)
     with get_db() as db:
-        players = db.execute("SELECT * FROM players").fetchall()
+        players = db.execute("SELECT * FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
         preds = db.execute("""
             SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer
             FROM tournament_predictions tp
@@ -529,7 +536,7 @@ async def send_daily_digest():
                    SUM(CASE WHEN p.points=1 THEN 1 ELSE 0 END) as outcome_hits
             FROM players pl LEFT JOIN predictions p ON pl.id=p.player_id
             GROUP BY pl.id ORDER BY total_points DESC""").fetchall()
-        players = db.execute("SELECT telegram_chat_id FROM players WHERE telegram_chat_id IS NOT NULL").fetchall()
+        players = db.execute("SELECT telegram_chat_id FROM players WHERE telegram_chat_id IS NOT NULL AND (is_guest IS NULL OR is_guest=0)").fetchall()
     if not rows: return
     medals = ['🥇','🥈','🥉']
     today_msk = (datetime.now(timezone.utc)+timedelta(hours=3)).strftime('%d.%m.%Y')
@@ -650,7 +657,8 @@ def get_me(token: str):
         "name": player["name"],
         "vabank_used": bool(vb),
         "telegram_connected": bool(player["telegram_chat_id"]),
-        "player_token": player["token"]
+        "player_token": player["token"],
+        "is_guest": bool(player["is_guest"])
     }
 
 @app.get("/api/matches")
@@ -827,6 +835,12 @@ def get_players():
             "FROM players p LEFT JOIN tournament_predictions tp ON p.id = tp.player_id"
         ).fetchall()
     return [dict(r) for r in rows]
+
+@app.post("/api/admin/players/{player_id}/guest", dependencies=[Depends(require_admin)])
+def set_guest(player_id: int, body: dict):
+    with get_db() as db:
+        db.execute("UPDATE players SET is_guest=? WHERE id=?", (1 if body.get("is_guest") else 0, player_id))
+    return {"ok": True}
 
 @app.delete("/api/admin/players/{player_id}", dependencies=[Depends(require_admin)])
 def delete_player(player_id: int):

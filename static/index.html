@@ -888,6 +888,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="sendDigest()">📊 Отправить таблицу сейчас</button>
           <button class="btn btn-ghost" onclick="sendBackup()">🗄 Сохранить бэкап сейчас</button>
+          <button class="btn btn-gold" onclick="sendTournReminder()">📣 Напомнить про ставку на финал</button>
         </div>
         <p class="hint" style="margin-top:10px">🗄 Бэкап базы данных автоматически отправляется тебе в Telegram каждую ночь в <strong>03:00 МСК</strong>.<br><br>
         Чтобы настроить бэкап, сделай один раз:<br>
@@ -1053,7 +1054,7 @@ function teamHtml(name){
 const ballSvg=`<svg class="card-deco" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="47" fill="none" stroke="#0a1628" stroke-width="2"/><polygon points="50,5 58,28 82,28 63,43 70,65 50,51 30,65 37,43 18,28 42,28" fill="#0a1628"/><circle cx="50" cy="50" r="13" fill="none" stroke="#0a1628" stroke-width="2"/></svg>`;
 
 // ── State ──
-let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false,tgConnected:false,botUsername:'',hideDays:0,rulesAccepted:false};
+let state={token:'',playerName:'',isAdmin:false,adminToken:'',vabankUsed:false,tgConnected:false,botUsername:'',hideDays:0,rulesAccepted:false,isGuest:false};
 function toast(msg,type='ok'){const e=document.getElementById('toast');e.textContent=msg;e.className=`toast show ${type}`;setTimeout(()=>e.classList.remove('show'),2800);}
 async function api(path,opts={}){
   const sep=path.includes('?')?'&':'?';
@@ -1109,7 +1110,7 @@ function enterApp(){
   checkWinnersTab();
   // Проверяем приняты ли правила
   state.rulesAccepted = localStorage.getItem('rules_accepted_v1') === 'true';
-  showRulesAgreeBanner();
+  if(!state.isGuest) showRulesAgreeBanner();
   // Загружаем hideDays и матчи параллельно
   api('/api/tournament-settings').then(s=>{
     state.hideDays = s.hide_days||0;
@@ -1466,6 +1467,7 @@ function acceptRules(){
 
 async function submitPred(matchId,isVabank){
   if(isVabank&&state.vabankUsed){toast('Ва-банк уже использован!','err');return;}
+  if(state.isGuest){toast('Гостевой доступ — только просмотр','err');return;}
   // Проверяем приняты ли правила
   if(!state.rulesAccepted && !state.isAdmin){
     toast('Сначала ознакомься с правилами турнира ☝️','err');
@@ -1577,7 +1579,7 @@ async function loadTournament(){
              <div class="tourn-field"><label>🥉 3-е место (+5 очков)</label>${buildTeamSelect('tc-third', my?.top_scorer||'', teams)}</div>
            </div>
            ${bonusHtml}
-           <button class="btn btn-primary btn-full" style="margin-top:14px" onclick="saveTournamentPred()">💾 Сохранить прогноз</button>
+           ${state.isGuest ? '' : `<button class="btn btn-primary btn-full" style="margin-top:14px" onclick="saveTournamentPred()">💾 Сохранить прогноз</button>`}
          </div>`
       : my
         ? `<div class="tourn-card">
@@ -2077,6 +2079,7 @@ async function loadPlayersTable(){
       <td style="font-size:12px;color:var(--muted)">${p.last_seen||'—'}</td>
       <td style="display:flex;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="copyLink('${origin}?token=${p.token}')">📋</button>
+        <button class="btn btn-sm" onclick="toggleGuest(${p.id},${p.is_guest?1:0})" style="background:${p.is_guest?'var(--navy)':'transparent'};border:1.5px solid var(--border);border-radius:6px;font-size:11px;padding:4px 8px;cursor:pointer;color:${p.is_guest?'#fff':'var(--muted)'}" title="${p.is_guest?'Снять гостевой доступ':'Сделать гостем'}">👁</button>
         <button class="btn btn-red btn-sm" onclick="deletePlayer(${p.id},'${p.name}')">✕</button>
       </td>
     </tr>`).join('');
@@ -2135,6 +2138,15 @@ async function sendDigest(){
   if(!confirm('Отправить таблицу лидеров всем участникам в Telegram прямо сейчас?'))return;
   const res=await fetch('/api/admin/send-digest',{method:'POST',headers:{'x-admin-token':state.adminToken}});
   if(res.ok)toast('📊 Таблица отправлена в Telegram!','ok');
+  else toast('Ошибка отправки','err');
+}
+async function sendTournReminder(){
+  if(!confirm('Отправить напоминание о ставке на финал?\n\nПолучат только те, кто ещё НЕ сделал долгосрочный прогноз (и подключил Telegram).'))return;
+  const res=await fetch('/api/admin/send-tourn-reminder',{method:'POST',headers:{'x-admin-token':state.adminToken}});
+  if(res.ok){
+    const d=await res.json();
+    toast(d.sent>0?`📣 Напоминание отправлено: ${d.sent} чел.`:'Все уже сделали прогноз! 🎉','ok');
+  }
   else toast('Ошибка отправки','err');
 }
 async function sendBackup(){
@@ -2547,6 +2559,7 @@ if(urlToken)document.getElementById('token-input').value=urlToken;
       state.vabankUsed=me.vabank_used;
       state.tgConnected=me.telegram_connected;
       state.botUsername=bi.username||'';
+      state.isGuest=me.is_guest||false;
       if(urlToken)localStorage.setItem('player_token',urlToken);
       enterApp();
     }
