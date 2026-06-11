@@ -2050,10 +2050,9 @@ async function loadAdmin(){
         PRIZE_VALUES = PRIZE_VALUES.map(p => Math.round(fund2 * p / 100));
       }
     }
-    // Устанавливаем кол-во участников
-    const pRows = document.querySelectorAll('#players-table tr');
+    // Устанавливаем кол-во участников (только не-гости, с сервера)
     const nEl = document.getElementById('s-players');
-    if(nEl && pRows.length > 0) nEl.value = pRows.length;
+    if(nEl) nEl.value = s.player_count || 1;
     // Активируем нужный режим и рендерим
     switchPrizeMode(PRIZE_MODE);
   }catch(e){ renderPrizeRows(); }
@@ -2097,7 +2096,17 @@ async function toggleGuest(id, currentIsGuest){
     headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},
     body: JSON.stringify({is_guest: makeGuest})
   });
-  if(res.ok){ toast(makeGuest?'👁 Гостевой доступ установлен':'✅ Полный доступ восстановлен','ok'); await loadPlayersTable(); }
+  if(res.ok){
+    toast(makeGuest?'👁 Гостевой доступ установлен':'✅ Полный доступ восстановлен','ok');
+    await loadPlayersTable();
+    // Обновляем кол-во участников в поле
+    try{
+      const s = await api('/api/tournament-settings');
+      const nEl = document.getElementById('s-players');
+      if(nEl && s.player_count) nEl.value = s.player_count;
+      updatePrizePreview();
+    }catch(e){}
+  }
   else toast('Ошибка','err');
 }
 
