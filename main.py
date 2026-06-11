@@ -180,7 +180,8 @@ async def broadcast_predictions(match_id):
     with get_db() as db:
         match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
         preds = db.execute("""SELECT pl.name,p.home_score,p.away_score,p.is_vabank
-            FROM predictions p JOIN players pl ON p.player_id=pl.id WHERE p.match_id=?""", (match_id,)).fetchall()
+            FROM predictions p JOIN players pl ON p.player_id=pl.id
+            WHERE p.match_id=? AND (pl.is_guest=0 OR pl.is_guest IS NULL)""", (match_id,)).fetchall()
         all_players = db.execute("SELECT id,name,telegram_chat_id FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
     if not match: return
     pred_map = {p["name"]: p for p in preds}
