@@ -565,6 +565,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
 
   .lb-head,.lb-row{grid-template-columns:36px 1fr 54px 36px 36px;}
   .lb-head>*:nth-child(n+6),.lb-row>*:nth-child(n+6){display:none;}
+  .lb-txt{display:none;}
   main{padding:12px;}
   .app-header-photo{height:150px;}
   .hero-photos{height:130px;}
@@ -630,8 +631,8 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
   <nav>
     <div class="tab active" onclick="showTab('matches')">Матчи</div>
     <div class="tab" onclick="showTab('tournament')">🏆 Ставка на финал</div>
-    <div class="tab" onclick="showTab('leaderboard')">Рейтинг</div>
-    <div class="tab" onclick="showTab('archive')">Архив</div>
+    <div class="tab" onclick="showTab('leaderboard')">Таблица лидеров</div>
+    <div class="tab" onclick="showTab('archive')">Архив матчей</div>
     <div class="tab" onclick="showTab('rules')">Правила</div>
     <div class="tab" id="winners-tab" style="display:none" onclick="showTab('winners')">🏆 Победители</div>
     <div class="tab" id="admin-tab" style="display:none" onclick="showTab('admin')">⚙ Админ</div>
@@ -1148,7 +1149,15 @@ async function loadTournamentBanner(){
     const started = allData.tournament_started;
     const my = data.my_prediction;
     // После старта турнира — скрываем баннер (прогноз уже нельзя изменить)
+    // Через 24ч после первого матча — баннер полностью убираем
     if(started && my){
+      const fmt = allData.first_match_time;
+      if(fmt){
+        // match_time хранится как МСК без таймзоны; парсим и сравниваем с текущим МСК
+        const msk = new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Moscow'}));
+        const firstMatch = new Date(fmt.replace('T',' '));
+        if(msk - firstMatch > 24*60*60*1000){ el.innerHTML=''; return; }
+      }
       el.innerHTML = `<div class="tourn-banner done">
         <div class="tb-left">
           <div class="tb-icon">🏆</div>
@@ -1750,7 +1759,7 @@ async function loadLeaderboard(){
     document.getElementById('lb-content').innerHTML=`
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px">Нажми на участника чтобы увидеть историю его прогнозов</p>
       <div class="lb-wrap">
-        <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center" title="Точных счётов">🎯 Точно</div><div style="text-align:center" title="Угадано исходов (включая точные)">✅ Исходов</div><div style="text-align:center" title="Процент угаданных матчей">% угад.</div><div style="text-align:center">🌍 Бонус</div></div>
+        <div class="lb-head"><div></div><div>Участник</div><div style="text-align:right">Очки</div><div style="text-align:center" title="Точных счётов">🎯<span class="lb-txt"> Точно</span></div><div style="text-align:center" title="Угадано исходов (включая точные)">✅<span class="lb-txt"> Исходов</span></div><div style="text-align:center" title="Процент угаданных матчей">%<span class="lb-txt"> угад.</span></div><div style="text-align:center">🌍<span class="lb-txt"> Бонус</span></div></div>
         ${rows.map((r,i)=>`<div class="lb-row" onclick="showPlayerHistory('${r.name.replace(/'/g,"\\'")}')">
           <div class="lb-rank ${rc[i]||''}">${medals[i]||i+1}</div>
           <div class="lb-name">${r.name} <span style="font-size:10px;color:var(--muted)">↗</span></div>
