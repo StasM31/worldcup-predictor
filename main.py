@@ -828,6 +828,7 @@ def get_all_tournament_predictions(token: str):
     player = get_player_by_token(token)
     with get_db() as db:
         started = db.execute("SELECT COUNT(*) FROM matches WHERE status != 'upcoming'").fetchone()[0] > 0
+        first_mt = db.execute("SELECT MIN(match_time) FROM matches").fetchone()[0]
         total_players = db.execute("SELECT COUNT(*) FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchone()[0]
         done_players = db.execute("SELECT COUNT(*) FROM tournament_predictions").fetchone()[0]
         rows = db.execute("""SELECT pl.name,tp.champion,tp.finalist1,tp.finalist2,tp.top_scorer,
@@ -836,10 +837,10 @@ def get_all_tournament_predictions(token: str):
         result = db.execute("SELECT * FROM tournament_result WHERE id=1").fetchone()
     if started:
         return {"predictions":[dict(r) for r in rows],"result":dict(result) if result else None,
-                "tournament_started":True,"done_count":done_players,"total_count":total_players}
+                "tournament_started":True,"first_match_time":first_mt,"done_count":done_players,"total_count":total_players}
     my_pred = next((dict(r) for r in rows if r["player_id"]==player["id"]),None)
     return {"predictions":[my_pred] if my_pred else [],"result":None,
-            "tournament_started":False,"done_count":done_players,"total_count":total_players}
+            "tournament_started":False,"first_match_time":first_mt,"done_count":done_players,"total_count":total_players}
 
 # ── Admin ──
 class PlayerIn(BaseModel):
