@@ -958,11 +958,11 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
     medals = ['🥇','🥈','🥉']
 
     def pts_label(pts, is_vb):
-        if pts >= 9: return '🎯🔥 Точный счёт (ва-банк)!'
-        if pts >= 3 and not is_vb: return '🎯 Точный счёт!'
-        if pts == 3 and is_vb: return '✅🔥 Исход (ва-банк)'
-        if pts == 1: return '✅ Исход угадан'
-        return '❌ Мимо'
+        if pts >= 9: return '🎯🔥'
+        if pts >= 3 and not is_vb: return '🎯'
+        if pts >= 3 and is_vb: return '✅🔥'
+        if pts == 1: return '✅'
+        return '❌'
 
     # Формируем сообщение
     lines = [
