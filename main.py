@@ -123,6 +123,16 @@ try:
         _db.execute("ALTER TABLE players ADD COLUMN is_guest INTEGER DEFAULT 0")
 except sqlite3.OperationalError:
     pass  # колонка уже существует
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE tournament_settings ADD COLUMN digest_enabled INTEGER DEFAULT 0")
+except sqlite3.OperationalError:
+    pass  # колонка уже существует
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE tournament_settings ADD COLUMN digest_time TEXT DEFAULT '18:00'")
+except sqlite3.OperationalError:
+    pass  # колонка уже существует
 
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
@@ -478,11 +488,18 @@ async def daily_digest_scheduler():
     last_sent = None
     while True:
         try:
-            now_msk = (datetime.now(timezone.utc)+timedelta(hours=3)).replace(tzinfo=None)
-            today = now_msk.date()
-            if now_msk.hour==18 and now_msk.minute<1 and last_sent!=today:
-                last_sent = today
-                await send_daily_digest()
+            with get_db() as db:
+                s = db.execute("SELECT digest_enabled, digest_time FROM tournament_settings WHERE id=1").fetchone()
+            enabled = s["digest_enabled"] if s else 0
+            digest_time = (s["digest_time"] if s and s["digest_time"] else "18:00").strip()
+            if enabled:
+                parts = digest_time.split(":")
+                target_h, target_m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+                now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).replace(tzinfo=None)
+                today = now_msk.date()
+                if now_msk.hour == target_h and now_msk.minute < 2 and last_sent != today:
+                    last_sent = today
+                    await send_daily_digest()
         except Exception as e:
             print(f"Digest error: {e}")
         await asyncio.sleep(30)
@@ -610,7 +627,7 @@ async def send_backup():
 async def startup():
     asyncio.create_task(recover_inflight_matches())
     asyncio.create_task(auto_start_scheduler())
-    # asyncio.create_task(daily_digest_scheduler())  # отключено по запросу
+    asyncio.create_task(daily_digest_scheduler())
     asyncio.create_task(daily_backup_scheduler())
     asyncio.create_task(welcome_broadcast_scheduler())
     asyncio.create_task(tourn_reminder_scheduler())
@@ -619,6 +636,29 @@ async def startup():
 @app.post("/api/admin/send-digest", dependencies=[Depends(require_admin)])
 async def manual_digest():
     await send_daily_digest(); return {"ok":True}
+
+@app.get("/api/admin/digest-settings", dependencies=[Depends(require_admin)])
+def get_digest_settings():
+    with get_db() as db:
+        s = db.execute("SELECT digest_enabled, digest_time FROM tournament_settings WHERE id=1").fetchone()
+    return {"enabled": bool(s["digest_enabled"]) if s else False,
+            "time": s["digest_time"] if s and s["digest_time"] else "18:00"}
+
+@app.post("/api/admin/digest-settings", dependencies=[Depends(require_admin)])
+def set_digest_settings(body: dict):
+    enabled = 1 if body.get("enabled") else 0
+    digest_time = body.get("time", "18:00").strip()
+    # Валидация формата HH:MM
+    import re
+    if not re.match(r"^\d{1,2}:\d{2}$", digest_time):
+        raise HTTPException(400, "Формат времени: HH:MM")
+    h, m = map(int, digest_time.split(":"))
+    if not (0 <= h <= 23 and 0 <= m <= 59):
+        raise HTTPException(400, "Некорректное время")
+    with get_db() as db:
+        db.execute("UPDATE tournament_settings SET digest_enabled=?, digest_time=? WHERE id=1",
+                   (enabled, digest_time))
+    return {"ok": True, "enabled": bool(enabled), "time": digest_time}
 
 @app.post("/api/admin/send-backup", dependencies=[Depends(require_admin)])
 async def manual_backup():
