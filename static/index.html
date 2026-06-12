@@ -885,7 +885,17 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
       </div>
       <div class="admin-block">
         <h3>📬 Ежедневная рассылка</h3>
-        <p class="hint">Таблица лидеров автоматически отправляется всем участникам в Telegram каждый день в <strong>18:00 МСК</strong>. Можно отправить вручную прямо сейчас для проверки.</p>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="digest-enabled" onchange="saveDigestSettings()">
+            <span>Автоматическая отправка таблицы лидеров</span>
+          </label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">в</span>
+            <input type="time" id="digest-time" value="18:00" onchange="saveDigestSettings()" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-family:'Oswald',sans-serif">
+            <span style="font-size:13px;color:var(--muted)">МСК</span>
+          </div>
+        </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="sendDigest()">📊 Отправить таблицу сейчас</button>
           <button class="btn btn-ghost" onclick="sendBackup()">🗄 Сохранить бэкап сейчас</button>
@@ -2067,6 +2077,7 @@ async function loadAdmin(){
   }catch(e){ renderPrizeRows(); }
   await loadPlayersTable();
   await loadAdminMatches();
+  await loadDigestSettings();
 }
 
 async function importAllMatches(){
@@ -2205,6 +2216,27 @@ async function sendCustomBroadcast(btn){
     btn.textContent = '📤 Отправить';
     btn.disabled = false;
   }
+}
+
+async function loadDigestSettings(){
+  try{
+    const res=await fetch('/api/admin/digest-settings',{headers:{'x-admin-token':state.adminToken}});
+    if(!res.ok)return;
+    const d=await res.json();
+    document.getElementById('digest-enabled').checked=d.enabled;
+    document.getElementById('digest-time').value=d.time||'18:00';
+  }catch(e){}
+}
+async function saveDigestSettings(){
+  const enabled=document.getElementById('digest-enabled').checked;
+  const time=document.getElementById('digest-time').value||'18:00';
+  try{
+    const res=await fetch('/api/admin/digest-settings',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({enabled,time})});
+    if(res.ok){
+      const d=await res.json();
+      toast(d.enabled?`✅ Рассылка включена — ежедневно в ${d.time} МСК`:'⏸ Автоматическая рассылка выключена','ok');
+    } else toast('Ошибка сохранения','err');
+  }catch(e){toast('Ошибка сети','err');}
 }
 
 async function sendDigest(){
