@@ -133,6 +133,21 @@ try:
         _db.execute("ALTER TABLE tournament_settings ADD COLUMN digest_time TEXT DEFAULT '18:00'")
 except sqlite3.OperationalError:
     pass  # колонка уже существует
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE tournament_settings ADD COLUMN welcome_enabled INTEGER DEFAULT 0")
+except sqlite3.OperationalError:
+    pass
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE tournament_settings ADD COLUMN welcome_time TEXT DEFAULT ''")
+except sqlite3.OperationalError:
+    pass
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE tournament_settings ADD COLUMN welcome_sent INTEGER DEFAULT 0")
+except sqlite3.OperationalError:
+    pass
 
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
@@ -417,28 +432,30 @@ async def send_tourn_pred_reminder():
     print(f"Tourn reminder sent to {len(players)} players")
 
 async def welcome_broadcast_scheduler():
-    """За час до первого матча турнира отправляет приветственное сообщение."""
+    """Отправляет приветственное сообщение один раз в заданное админом время."""
     from datetime import timedelta
     await asyncio.sleep(20)
-    sent = False
     while True:
         try:
-            if not sent:
-                now_msk = (datetime.now(timezone.utc)+timedelta(hours=3)).replace(tzinfo=None)
-                with get_db() as db:
-                    first = db.execute(
-                        "SELECT * FROM matches WHERE status='upcoming' ORDER BY match_time ASC LIMIT 1"
-                    ).fetchone()
-                if first:
-                    mt = parse_dt(first["match_time"])
-                    if mt:
-                        diff = (mt.replace(tzinfo=None) - now_msk).total_seconds()
-                        if 0 < diff <= 3600:  # за час до старта
-                            sent = True
-                            await send_welcome_broadcast()
+            with get_db() as db:
+                s = db.execute(
+                    "SELECT welcome_enabled, welcome_time, welcome_sent FROM tournament_settings WHERE id=1"
+                ).fetchone()
+            enabled = s["welcome_enabled"] if s else 0
+            already_sent = s["welcome_sent"] if s else 0
+            welcome_time = (s["welcome_time"] if s and s["welcome_time"] else "").strip()
+            if enabled and not already_sent and welcome_time:
+                parts = welcome_time.split(":")
+                target_h, target_m = int(parts[0]), int(parts[1]) if len(parts) > 1 else 0
+                now_msk = (datetime.now(timezone.utc) + timedelta(hours=3)).replace(tzinfo=None)
+                if now_msk.hour == target_h and now_msk.minute < 2:
+                    with get_db() as db:
+                        db.execute("UPDATE tournament_settings SET welcome_sent=1 WHERE id=1")
+                    await send_welcome_broadcast()
+                    print("Welcome broadcast sent (scheduled)")
         except Exception as e:
             print(f"Welcome scheduler error: {e}")
-        await asyncio.sleep(60)
+        await asyncio.sleep(30)
 
 async def send_welcome_broadcast():
     with get_db() as db:
@@ -659,6 +676,44 @@ def set_digest_settings(body: dict):
         db.execute("UPDATE tournament_settings SET digest_enabled=?, digest_time=? WHERE id=1",
                    (enabled, digest_time))
     return {"ok": True, "enabled": bool(enabled), "time": digest_time}
+
+@app.get("/api/admin/welcome-settings", dependencies=[Depends(require_admin)])
+def get_welcome_settings():
+    with get_db() as db:
+        s = db.execute("SELECT welcome_enabled, welcome_time, welcome_sent FROM tournament_settings WHERE id=1").fetchone()
+    return {"enabled": bool(s["welcome_enabled"]) if s else False,
+            "time": s["welcome_time"] if s and s["welcome_time"] else "",
+            "sent": bool(s["welcome_sent"]) if s else False}
+
+@app.post("/api/admin/welcome-settings", dependencies=[Depends(require_admin)])
+def set_welcome_settings(body: dict):
+    enabled = 1 if body.get("enabled") else 0
+    welcome_time = body.get("time", "").strip()
+    if welcome_time:
+        import re
+        if not re.match(r"^\d{1,2}:\d{2}$", welcome_time):
+            raise HTTPException(400, "Формат времени: HH:MM")
+        h, m = map(int, welcome_time.split(":"))
+        if not (0 <= h <= 23 and 0 <= m <= 59):
+            raise HTTPException(400, "Некорректное время")
+    with get_db() as db:
+        db.execute("UPDATE tournament_settings SET welcome_enabled=?, welcome_time=? WHERE id=1",
+                   (enabled, welcome_time))
+    return {"ok": True, "enabled": bool(enabled), "time": welcome_time}
+
+@app.post("/api/admin/welcome-reset", dependencies=[Depends(require_admin)])
+def reset_welcome_sent():
+    """Сбрасывает флаг 'отправлено' — позволяет отправить приветствие повторно."""
+    with get_db() as db:
+        db.execute("UPDATE tournament_settings SET welcome_sent=0 WHERE id=1")
+    return {"ok": True}
+
+@app.post("/api/admin/send-welcome", dependencies=[Depends(require_admin)])
+async def manual_welcome():
+    with get_db() as db:
+        db.execute("UPDATE tournament_settings SET welcome_sent=1 WHERE id=1")
+    await send_welcome_broadcast()
+    return {"ok": True}
 
 @app.post("/api/admin/send-backup", dependencies=[Depends(require_admin)])
 async def manual_backup():
