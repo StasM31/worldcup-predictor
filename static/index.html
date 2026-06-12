@@ -1294,9 +1294,14 @@ function renderMatch(m){
     :m.status==='ended'
     ?`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:600">⏳ Ожидаем результат матча...</div>`
     :'';
-  const isVb=m.my_prediction?.is_vabank;
+  const isVb=!state.isAdmin&&m.my_prediction?.is_vabank;
   let pred='';
-  if(m.my_prediction && m.status!=='upcoming'){
+  if(state.isAdmin){
+    // Админ видит матчи через токен первого игрока — его прогноз и формы ставок не показываем
+    if(m.status==='upcoming'||m.status==='grace'){
+      pred=`<div style="font-size:12px;color:var(--muted);margin-top:4px;font-weight:600">👁 Режим администратора — ставки делают участники</div>`;
+    }
+  } else if(m.my_prediction && m.status!=='upcoming'){
     // Матч начался — показываем прогноз, менять нельзя
     pred=`<div class="my-pred">${isVb?'<span class="vb-label">🔥 ВА-БАНК</span>':''} Мой прогноз: <strong>${m.my_prediction.home_score}:${m.my_prediction.away_score}</strong></div>`;
   } else if(m.status==='upcoming'){
@@ -1460,6 +1465,7 @@ function toggleRulesBtn(checkbox){
 }
 
 async function submitPred(matchId,isVabank){
+  if(state.isAdmin){toast('Режим администратора — ставки делают только участники','err');return;}
   if(isVabank&&state.vabankUsed){toast('Ва-банк уже использован!','err');return;}
   if(state.isGuest){toast('Гостевой доступ — только просмотр','err');return;}
   // Проверяем приняты ли правила
@@ -1526,7 +1532,7 @@ async function loadTournament(){
       teams=[...teamSet].sort((a,b)=>a.localeCompare(b,'ru'));
     }catch(e){}
     const el=document.getElementById('tourn-content');
-    const my=data.my_prediction, res=data.result;
+    const my=state.isAdmin?null:data.my_prediction, res=data.result;
     const started=allData.tournament_started;
     const doneCount=allData.done_count||0, totalCount=allData.total_count||0;
 
@@ -1614,6 +1620,7 @@ async function loadTournament(){
   }catch(e){toast(e.message,'err');}
 }
 async function saveTournamentPred(){
+  if(state.isAdmin){toast('Режим администратора — ставки делают только участники','err');return;}
   const body={token:state.token,champion:document.getElementById('tc-champ').value,finalist1:document.getElementById('tc-fin1').value,finalist2:document.getElementById('tc-fin2').value,top_scorer:document.getElementById('tc-third')?.value||''};
   if(!body.champion){toast('Выбери чемпиона!','err');return;}
   if(!body.finalist1||!body.finalist2){toast('Выбери обоих финалистов!','err');return;}
