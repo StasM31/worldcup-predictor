@@ -884,6 +884,25 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
         </div>
       </div>
       <div class="admin-block">
+        <h3>👋 Приветственное сообщение</h3>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
+            <input type="checkbox" id="welcome-enabled" onchange="saveWelcomeSettings()">
+            <span>Автоматическая отправка перед турниром</span>
+          </label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:13px;color:var(--muted)">в</span>
+            <input type="time" id="welcome-time" value="" onchange="saveWelcomeSettings()" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:14px;font-family:'Oswald',sans-serif">
+            <span style="font-size:13px;color:var(--muted)">МСК</span>
+          </div>
+        </div>
+        <div id="welcome-status" style="font-size:13px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="sendWelcomeNow()">👋 Отправить сейчас</button>
+          <button class="btn btn-ghost" onclick="resetWelcomeSent()">🔄 Сбросить флаг «отправлено»</button>
+        </div>
+      </div>
+      <div class="admin-block">
         <h3>📬 Ежедневная рассылка</h3>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px">
@@ -2078,6 +2097,7 @@ async function loadAdmin(){
   await loadPlayersTable();
   await loadAdminMatches();
   await loadDigestSettings();
+  await loadWelcomeSettings();
 }
 
 async function importAllMatches(){
@@ -2216,6 +2236,44 @@ async function sendCustomBroadcast(btn){
     btn.textContent = '📤 Отправить';
     btn.disabled = false;
   }
+}
+
+async function loadWelcomeSettings(){
+  try{
+    const res=await fetch('/api/admin/welcome-settings',{headers:{'x-admin-token':state.adminToken}});
+    if(!res.ok)return;
+    const d=await res.json();
+    document.getElementById('welcome-enabled').checked=d.enabled;
+    document.getElementById('welcome-time').value=d.time||'';
+    const st=document.getElementById('welcome-status');
+    if(d.sent) st.innerHTML='<span style="color:var(--green)">✅ Сообщение уже было отправлено</span>';
+    else if(d.enabled&&d.time) st.innerHTML=`<span style="color:var(--gold)">⏳ Запланировано на ${d.time} МСК</span>`;
+    else st.innerHTML='<span style="color:var(--muted)">Рассылка не активна</span>';
+  }catch(e){}
+}
+async function saveWelcomeSettings(){
+  const enabled=document.getElementById('welcome-enabled').checked;
+  const time=document.getElementById('welcome-time').value||'';
+  try{
+    const res=await fetch('/api/admin/welcome-settings',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({enabled,time})});
+    if(res.ok){
+      const d=await res.json();
+      toast(d.enabled&&d.time?`✅ Приветствие запланировано на ${d.time} МСК`:'⏸ Приветственная рассылка выключена','ok');
+      await loadWelcomeSettings();
+    } else toast('Ошибка сохранения','err');
+  }catch(e){toast('Ошибка сети','err');}
+}
+async function sendWelcomeNow(){
+  if(!confirm('Отправить приветственное сообщение всем участникам прямо сейчас?'))return;
+  const res=await fetch('/api/admin/send-welcome',{method:'POST',headers:{'x-admin-token':state.adminToken}});
+  if(res.ok){toast('👋 Приветствие отправлено!','ok');await loadWelcomeSettings();}
+  else toast('Ошибка отправки','err');
+}
+async function resetWelcomeSent(){
+  if(!confirm('Сбросить флаг «отправлено»?\n\nЭто позволит автоматической рассылке сработать повторно в заданное время.'))return;
+  const res=await fetch('/api/admin/welcome-reset',{method:'POST',headers:{'x-admin-token':state.adminToken}});
+  if(res.ok){toast('🔄 Флаг сброшен','ok');await loadWelcomeSettings();}
+  else toast('Ошибка','err');
 }
 
 async function loadDigestSettings(){
