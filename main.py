@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
-import sqlite3, os, httpx, asyncio, secrets
+import sqlite3, os, httpx, asyncio, secrets, html
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 
@@ -14,8 +14,18 @@ os.makedirs(_DATA_DIR, exist_ok=True)
 DATABASE = os.path.join(_DATA_DIR, "predictor.db")
 
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "changeme123")
+if ADMIN_TOKEN == "changeme123":
+    print("=" * 60)
+    print("WARNING: ADMIN_TOKEN не задан в переменных окружения!")
+    print("Используется небезопасный дефолт 'changeme123'.")
+    print("Задайте ADMIN_TOKEN в настройках Railway как можно скорее.")
+    print("=" * 60)
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 BACKUP_ADMIN_CHAT_ID = os.environ.get("BACKUP_CHAT_ID", "")
+# Опционально: секрет вебхука Telegram. Если задан, вебхук принимает только
+# запросы с заголовком X-Telegram-Bot-Api-Secret-Token (нужно перерегистрировать
+# вебхук через setup_webhook.py после установки переменной).
+WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 GRACE_SECONDS = 60
 MATCH_DURATION_SECONDS = 120 * 60
 
@@ -91,28 +101,28 @@ def init_db():
         """)
         try:
             db.execute("ALTER TABLE predictions ADD COLUMN is_vabank INTEGER DEFAULT 0")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # колонка уже существует
 
 init_db()
 # Migration: add hide_days if missing
 try:
     with get_db() as _db:
         _db.execute("ALTER TABLE tournament_settings ADD COLUMN hide_days INTEGER DEFAULT 0")
-except:
-    pass
+except sqlite3.OperationalError:
+    pass  # колонка уже существует
 # Migration: add last_seen if missing
 try:
     with get_db() as _db:
         _db.execute("ALTER TABLE players ADD COLUMN last_seen TEXT")
-except:
-    pass
+except sqlite3.OperationalError:
+    pass  # колонка уже существует
 # Migration: add is_guest if missing
 try:
     with get_db() as _db:
         _db.execute("ALTER TABLE players ADD COLUMN is_guest INTEGER DEFAULT 0")
-except:
-    pass
+except sqlite3.OperationalError:
+    pass  # колонка уже существует
 
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
@@ -123,7 +133,7 @@ def parse_dt(s):
     return None
 
 def require_admin(x_admin_token: str = Header(...)):
-    if x_admin_token != ADMIN_TOKEN:
+    if not secrets.compare_digest(x_admin_token, ADMIN_TOKEN):
         raise HTTPException(403, "Forbidden")
 
 def get_player_by_token(token: str):
@@ -163,9 +173,13 @@ def get_flag_emoji(name):
     if not code: return ''
     return ''.join(chr(0x1F1E6 + ord(c) - ord('A')) for c in code.upper())
 
+def esc(s):
+    """Экранирует <, >, & для Telegram parse_mode=HTML."""
+    return html.escape(str(s), quote=False)
+
 def team_with_flag(name):
     f = get_flag_emoji(name)
-    return f"{name} {f}" if f else name
+    return f"{esc(name)} {f}" if f else esc(name)
 
 async def send_telegram(chat_id, text):
     if not BOT_TOKEN or not chat_id: return
@@ -192,9 +206,9 @@ async def broadcast_predictions(match_id):
         p = pred_map.get(pl["name"])
         if p:
             vb = " 🔥<b>ВА-БАНК</b>" if p["is_vabank"] else ""
-            lines.append(f"• {pl['name']}: <b>{p['home_score']}:{p['away_score']}</b>{vb}")
+            lines.append(f"• {esc(pl['name'])}: <b>{p['home_score']}:{p['away_score']}</b>{vb}")
         else:
-            lines.append(f"• {pl['name']}: 😴 нет прогноза")
+            lines.append(f"• {esc(pl['name'])}: 😴 нет прогноза")
     text = "\n".join(lines)
     tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in all_players if pl["telegram_chat_id"]]
     if tasks: await asyncio.gather(*tasks)
@@ -210,8 +224,8 @@ def check_and_broadcast(match_id):
     if total > 0 and done >= total:
         asyncio.create_task(broadcast_predictions(match_id))
 
-async def grace_period_end(match_id):
-    await asyncio.sleep(GRACE_SECONDS)
+async def grace_period_end(match_id, delay=GRACE_SECONDS):
+    await asyncio.sleep(delay)
     with get_db() as db:
         m = db.execute("SELECT status FROM matches WHERE id=?", (match_id,)).fetchone()
         if m and m["status"] == "grace":
@@ -236,6 +250,7 @@ async def send_longterm_after_start():
             SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer
             FROM tournament_predictions tp
             JOIN players pl ON tp.player_id = pl.id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
             ORDER BY pl.name
         """).fetchall()
     if not preds:
@@ -247,27 +262,27 @@ async def send_longterm_after_start():
         "🥇 <b>Чемпион:</b>"
     ]
     for p in preds:
-        f = get_flag(p['champion']) if p['champion'] else ''
-        lines.append(f"  • {p['name']} → {f} {p['champion'] or '—'}")
+        f = get_flag_emoji(p['champion']) if p['champion'] else ''
+        lines.append(f"  • {esc(p['name'])} → {f} {esc(p['champion']) if p['champion'] else '—'}")
     lines.extend(["", "🥈 <b>Финалисты:</b>"])
     for p in preds:
-        f1 = get_flag(p['finalist1']) if p['finalist1'] else ''
-        f2 = get_flag(p['finalist2']) if p['finalist2'] else ''
-        fin1 = f"{f1} {p['finalist1']}" if p['finalist1'] else '—'
-        fin2 = f"{f2} {p['finalist2']}" if p['finalist2'] else '—'
-        lines.append(f"  • {p['name']} → {fin1} / {fin2}")
+        f1 = get_flag_emoji(p['finalist1']) if p['finalist1'] else ''
+        f2 = get_flag_emoji(p['finalist2']) if p['finalist2'] else ''
+        fin1 = f"{f1} {esc(p['finalist1'])}" if p['finalist1'] else '—'
+        fin2 = f"{f2} {esc(p['finalist2'])}" if p['finalist2'] else '—'
+        lines.append(f"  • {esc(p['name'])} → {fin1} / {fin2}")
     lines.extend(["", "🥉 <b>3-е место:</b>"])
     for p in preds:
-        f = get_flag(p['top_scorer']) if p['top_scorer'] else ''
-        lines.append(f"  • {p['name']} → {f} {p['top_scorer'] or '—'}")
+        f = get_flag_emoji(p['top_scorer']) if p['top_scorer'] else ''
+        lines.append(f"  • {esc(p['name'])} → {f} {esc(p['top_scorer']) if p['top_scorer'] else '—'}")
     text = "\n".join(lines)
     tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players if pl["telegram_chat_id"]]
     if tasks:
         await asyncio.gather(*tasks)
     print("Long-term predictions broadcast sent!")
 
-async def auto_finish_match(match_id):
-    await asyncio.sleep(MATCH_DURATION_SECONDS - GRACE_SECONDS)
+async def auto_finish_match(match_id, delay=MATCH_DURATION_SECONDS - GRACE_SECONDS):
+    await asyncio.sleep(delay)
     with get_db() as db:
         m = db.execute("SELECT status FROM matches WHERE id=?", (match_id,)).fetchone()
         if m and m["status"] == "live":
@@ -279,6 +294,47 @@ def calc_points(ph, pa, rh, ra, is_vabank=False):
     ro = "H" if rh>ra else ("A" if rh<ra else "D")
     if po==ro: return 3 if is_vabank else 1
     return 0
+
+def _parse_started_at(s):
+    if not s: return None
+    try:
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, TypeError):
+        return None
+
+async def recover_inflight_matches():
+    """После рестарта сервера восстанавливает таймеры матчей, застрявших в grace/live.
+
+    Таймеры (grace_period_end, auto_finish_match) живут в памяти и теряются
+    при редеплое. Если статус всё ещё 'grace' — рассылка прогнозов не успела
+    уйти (grace_period_end сначала меняет статус на 'live', потом рассылает),
+    поэтому безопасно дозапустить grace_period_end с остатком времени.
+    Если статус 'live' — рассылка уже была, дозапускаем только авто-завершение.
+    """
+    await asyncio.sleep(2)
+    try:
+        with get_db() as db:
+            rows = db.execute(
+                "SELECT id, status, started_at FROM matches WHERE status IN ('grace','live')"
+            ).fetchall()
+        if not rows: return
+        now = datetime.now(timezone.utc)
+        for m in rows:
+            started = _parse_started_at(m["started_at"])
+            elapsed = (now - started).total_seconds() if started else MATCH_DURATION_SECONDS
+            if m["status"] == "grace":
+                remaining = max(0, GRACE_SECONDS - elapsed)
+                asyncio.create_task(grace_period_end(m["id"], delay=remaining))
+                print(f"Recovery: match {m['id']} in grace, resuming in {remaining:.0f}s")
+            else:  # live
+                remaining = max(0, MATCH_DURATION_SECONDS - elapsed)
+                asyncio.create_task(auto_finish_match(m["id"], delay=remaining))
+                print(f"Recovery: match {m['id']} live, auto-finish in {remaining:.0f}s")
+    except Exception as e:
+        print(f"Recovery error: {e}")
 
 # ── Schedulers ──
 async def auto_start_scheduler():
@@ -376,11 +432,9 @@ async def welcome_broadcast_scheduler():
 
 async def send_welcome_broadcast():
     with get_db() as db:
-        players = db.execute("SELECT * FROM players").fetchall()
+        players = db.execute("SELECT * FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
         settings = db.execute("SELECT * FROM tournament_settings WHERE id=1").fetchone()
         first = db.execute("SELECT * FROM matches ORDER BY match_time ASC LIMIT 1").fetchone()
-        # Закрываем приём долгосрочных прогнозов — помечаем в настройках
-        db.execute("UPDATE tournament_settings SET hide_days=hide_days WHERE id=1")  # no-op, tournament_started tracked via matches
     n = len(players)
     fee = settings["entry_fee"] if settings else 15000
     fund = n * fee
@@ -415,55 +469,6 @@ async def send_welcome_broadcast():
     if tasks:
         await asyncio.gather(*tasks)
     print("Welcome broadcast sent!")
-
-async def send_longterm_broadcast(players):
-    """Отправляет долгосрочные прогнозы за 5 минут до первого матча."""
-    await asyncio.sleep(55 * 60)  # ждём 55 минут
-    with get_db() as db:
-        preds = db.execute("""
-            SELECT pl.name, tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer
-            FROM tournament_predictions tp
-            JOIN players pl ON tp.player_id = pl.id
-            ORDER BY pl.name
-        """).fetchall()
-
-    if not preds:
-        return
-
-    def flag(team):
-        return get_flag(team) if team else ''
-
-    lines = [
-        "🌍 <b>Долгосрочные прогнозы участников</b>",
-        "Чемпионат мира 2026 · Ставки закрыты",
-        "",
-    ]
-
-    lines.append("🥇 <b>Чемпион:</b>")
-    for p in preds:
-        f = flag(p['champion'])
-        lines.append(f"  • {p['name']} → {f} {p['champion'] or '—'}")
-
-    lines.append("")
-    lines.append("🥈 <b>Финалисты:</b>")
-    for p in preds:
-        f1 = flag(p['finalist1'])
-        f2 = flag(p['finalist2'])
-        fin1 = f"{f1} {p['finalist1']}" if p['finalist1'] else '—'
-        fin2 = f"{f2} {p['finalist2']}" if p['finalist2'] else '—'
-        lines.append(f"  • {p['name']} → {fin1} / {fin2}")
-
-    lines.append("")
-    lines.append("🥉 <b>3-е место:</b>")
-    for p in preds:
-        f = flag(p['top_scorer'])
-        lines.append(f"  • {p['name']} → {f} {p['top_scorer'] or '—'}")
-
-    text = "\n".join(lines)
-    tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players if pl["telegram_chat_id"]]
-    if tasks:
-        await asyncio.gather(*tasks)
-    print("Long-term broadcast sent!")
 
 PLACE_MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣']
 
@@ -541,6 +546,7 @@ async def send_daily_digest():
                    SUM(CASE WHEN p.points>=3 THEN 1 ELSE 0 END) as exact_hits,
                    SUM(CASE WHEN p.points=1 THEN 1 ELSE 0 END) as outcome_hits
             FROM players pl LEFT JOIN predictions p ON pl.id=p.player_id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
             GROUP BY pl.id ORDER BY total_points DESC""").fetchall()
         players = db.execute("SELECT telegram_chat_id FROM players WHERE telegram_chat_id IS NOT NULL AND (is_guest IS NULL OR is_guest=0)").fetchall()
     if not rows: return
@@ -549,7 +555,7 @@ async def send_daily_digest():
     lines = [f"📊 <b>Таблица лидеров на {today_msk}</b>\n"]
     for i,r in enumerate(rows):
         medal = medals[i] if i<3 else f"{i+1}."
-        lines.append(f"{medal} <b>{r['name']}</b> — <b>{r['total_points']} очк.</b>")
+        lines.append(f"{medal} <b>{esc(r['name'])}</b> — <b>{r['total_points']} очк.</b>")
     text = "\n".join(lines)
     tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players]
     if tasks: await asyncio.gather(*tasks)
@@ -573,11 +579,20 @@ async def send_backup():
     chat_id = BACKUP_ADMIN_CHAT_ID
     if not BOT_TOKEN or not chat_id: return
     if not os.path.exists(DATABASE): return
+    tmp_path = DATABASE + ".backup_tmp"
     try:
         from datetime import timedelta
         now_msk = (datetime.now(timezone.utc)+timedelta(hours=3)).strftime("%d.%m.%Y_%H-%M")
+        # Снимаем целостную копию через SQLite backup API
+        # (прямая отправка живого файла может дать битую копию при записи в этот момент)
+        src = sqlite3.connect(DATABASE)
+        dst = sqlite3.connect(tmp_path)
+        try:
+            src.backup(dst)
+        finally:
+            dst.close(); src.close()
         async with httpx.AsyncClient() as client:
-            with open(DATABASE, "rb") as f:
+            with open(tmp_path, "rb") as f:
                 await client.post(
                     f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument",
                     data={"chat_id":chat_id,"caption":f"🗄 Бэкап базы данных\n📅 {now_msk} МСК"},
@@ -585,9 +600,15 @@ async def send_backup():
                     timeout=30)
     except Exception as e:
         print(f"Backup error: {e}")
+    finally:
+        try:
+            if os.path.exists(tmp_path): os.remove(tmp_path)
+        except OSError:
+            pass
 
 @app.on_event("startup")
 async def startup():
+    asyncio.create_task(recover_inflight_matches())
     asyncio.create_task(auto_start_scheduler())
     asyncio.create_task(daily_digest_scheduler())
     asyncio.create_task(daily_backup_scheduler())
@@ -657,7 +678,7 @@ async def bot_info():
             r = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe", timeout=5)
             data = r.json()
             return {"username": data.get("result", {}).get("username")}
-    except:
+    except Exception:
         return {"username": None}
 
 @app.get("/api/me")
@@ -916,15 +937,16 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
         preds = db.execute("""
             SELECT pl.name, pl.telegram_chat_id, p.home_score, p.away_score, p.points, p.is_vabank
             FROM predictions p JOIN players pl ON p.player_id=pl.id
-            WHERE p.match_id=? ORDER BY p.points DESC
+            WHERE p.match_id=? AND (pl.is_guest=0 OR pl.is_guest IS NULL) ORDER BY p.points DESC
         """, (match_id,)).fetchall()
-        all_players = db.execute("SELECT id, name, telegram_chat_id FROM players").fetchall()
+        all_players = db.execute("SELECT id, name, telegram_chat_id FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
         # Общий рейтинг после матча
         standings = db.execute("""
             SELECT pl.name,
                    COALESCE(SUM(p.points),0) as total
             FROM players pl
             LEFT JOIN predictions p ON pl.id=p.player_id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
             GROUP BY pl.id ORDER BY total DESC
         """).fetchall()
     if not match:
@@ -933,7 +955,6 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
     home = team_with_flag(match['home_team'])
     away = team_with_flag(match['away_team'])
     medals = ['🥇','🥈','🥉']
-    pts_labels = {3:'🎯 Точный счёт!', 9:'🎯🔥 Точный счёт (ва-банк)!', 1:'✅ Исход угадан', 3:'✅🔥 Исход (ва-банк)', 0:'❌ Мимо'}
 
     def pts_label(pts, is_vb):
         if pts >= 9: return '🎯🔥 Точный счёт (ва-банк)!'
@@ -956,15 +977,15 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
         if p:
             vb = " 🔥" if p["is_vabank"] else ""
             label = pts_label(p["points"], bool(p["is_vabank"]))
-            lines.append(f"• <b>{pl['name']}</b>{vb}: {p['home_score']}:{p['away_score']} → <b>+{p['points']} очк.</b> {label}")
+            lines.append(f"• <b>{esc(pl['name'])}</b>{vb}: {p['home_score']}:{p['away_score']} → <b>+{p['points']} очк.</b> {label}")
         else:
-            lines.append(f"• <b>{pl['name']}</b>: 😴 нет прогноза → 0 очк.")
+            lines.append(f"• <b>{esc(pl['name'])}</b>: 😴 нет прогноза → 0 очк.")
 
     # Таблица лидеров после матча
     lines.append(f"\n🏆 <b>Таблица после матча:</b>\n")
     for i, r in enumerate(standings):
         medal = medals[i] if i < 3 else f"{i+1}."
-        lines.append(f"{medal} {r['name']} — <b>{r['total']} очк.</b>")
+        lines.append(f"{medal} {esc(r['name'])} — <b>{r['total']} очк.</b>")
 
     text = "\n".join(lines)
     tasks = [send_telegram(str(pl["telegram_chat_id"]), text)
@@ -1036,7 +1057,10 @@ def set_hide_days(body: dict):
     return {"ok": True}
 
 @app.post("/api/telegram/webhook")
-async def telegram_webhook(update: dict):
+async def telegram_webhook(update: dict, x_telegram_bot_api_secret_token: Optional[str] = Header(None)):
+    # Проверка секрета — только если он задан (обратная совместимость)
+    if WEBHOOK_SECRET and x_telegram_bot_api_secret_token != WEBHOOK_SECRET:
+        raise HTTPException(403, "Forbidden")
     msg = update.get("message",{})
     text = msg.get("text","")
     chat_id = str(msg.get("chat",{}).get("id",""))
@@ -1046,7 +1070,7 @@ async def telegram_webhook(update: dict):
             player = db.execute("SELECT * FROM players WHERE token=?", (token,)).fetchone()
             if player:
                 db.execute("UPDATE players SET telegram_chat_id=? WHERE token=?", (chat_id,token))
-                await send_telegram(chat_id, f"✅ Привет, <b>{player['name']}</b>! Ты подключён к турниру прогнозов ⚽\nУдачи! 🏆")
+                await send_telegram(chat_id, f"✅ Привет, <b>{esc(player['name'])}</b>! Ты подключён к турниру прогнозов ⚽\nУдачи! 🏆")
             else:
                 await send_telegram(chat_id, "❌ Неверный токен.")
     return {"ok":True}

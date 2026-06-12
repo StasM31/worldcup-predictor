@@ -1459,14 +1459,6 @@ function toggleRulesBtn(checkbox){
   if(btn) btn.classList.toggle('active', checkbox.checked);
 }
 
-function acceptRules(){
-  state.rulesAccepted = true;
-  localStorage.setItem('rules_accepted_v1', 'true');
-  const wrap = document.getElementById('rules-agree-wrap');
-  if(wrap) wrap.innerHTML = '';
-  toast('✅ Отлично! Теперь можешь делать прогнозы!', 'ok');
-}
-
 async function submitPred(matchId,isVabank){
   if(isVabank&&state.vabankUsed){toast('Ва-банк уже использован!','err');return;}
   if(state.isGuest){toast('Гостевой доступ — только просмотр','err');return;}
