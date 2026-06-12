@@ -610,7 +610,7 @@ async def send_backup():
 async def startup():
     asyncio.create_task(recover_inflight_matches())
     asyncio.create_task(auto_start_scheduler())
-    asyncio.create_task(daily_digest_scheduler())
+    # asyncio.create_task(daily_digest_scheduler())  # отключено по запросу
     asyncio.create_task(daily_backup_scheduler())
     asyncio.create_task(welcome_broadcast_scheduler())
     asyncio.create_task(tourn_reminder_scheduler())
