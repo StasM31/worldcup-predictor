@@ -959,6 +959,10 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
           <input type="checkbox" id="hide-finished-matches" onchange="loadAdminMatches()">
           <span>Скрыть завершённые матчи</span>
         </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;margin-bottom:12px">
+          <input type="checkbox" id="show-predictions" checked onchange="loadAdminMatches()">
+          <span>Показывать прогнозы участников</span>
+        </label>
         <div id="admin-matches-list"></div>
       </div>
     </div>
@@ -2338,6 +2342,7 @@ async function loadAdminMatches(){
   if(!filtered.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:14px">Все матчи завершены ✅</div>';return;}
   const stL={upcoming:'⏳ Скоро',live:'🔴 Live',grace:'🔴 Grace',ended:'⏹ Ожидает счёт',finished:'✅ Завершён'};
   const stColor={upcoming:'var(--muted)',live:'#e74c3c',grace:'#e74c3c',ended:'var(--gold)',finished:'var(--green)'};
+  const showPreds=document.getElementById('show-predictions')?.checked;
   el.innerHTML=filtered.map(m=>{
     const mtp=m.match_time.split(/[T:\-]/);
     const months2=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
@@ -2366,10 +2371,12 @@ async function loadAdminMatches(){
         <button class="btn btn-ghost btn-sm" onclick="cancelEdit(${m.id})" style="padding:3px 6px;font-size:12px">✕</button>
       </div>`;
     }
+    const pi=showPreds?(m.predictions.length?m.predictions.map(p=>p.name+':'+p.home_score+':'+p.away_score).join(' · '):'нет'):'';
     return`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="flex:1;min-width:140px">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">${teamHtml(m.home_team)}<span style="color:var(--muted);font-weight:700;font-size:13px">vs</span>${teamHtml(m.away_team)}</div>
         <div style="font-size:11px;color:var(--muted)">${dt} · <span style="color:${stColor[m.status]||'var(--muted)'};font-weight:600">${stL[m.status]||m.status}</span></div>
+        ${pi?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Прогнозы: ${pi}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${scoreBlock}
