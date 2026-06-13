@@ -955,6 +955,10 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
       </div>
       <div class="admin-block">
         <h3>📋 Управление матчами</h3>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;margin-bottom:12px">
+          <input type="checkbox" id="hide-finished-matches" onchange="loadAdminMatches()">
+          <span>Скрыть завершённые матчи</span>
+        </label>
         <div id="admin-matches-list"></div>
       </div>
     </div>
@@ -2329,32 +2333,66 @@ async function loadAdminMatches(){
   const matches=await fetch('/api/admin/matches',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
   const el=document.getElementById('admin-matches-list');
   if(!matches.length){el.innerHTML='<div class="empty" style="padding:24px"><div class="ico">📅</div>Матчей нет</div>';return;}
-  const stL={upcoming:'⏳ Скоро',live:'🔴 Live',grace:'🔴 Live · 1 мин',ended:'⏹ FIN',finished:'✅ FIN'};
-  el.innerHTML=matches.map(m=>{
+  const hideFinished=document.getElementById('hide-finished-matches')?.checked;
+  const filtered=hideFinished?matches.filter(m=>m.status!=='finished'):matches;
+  if(!filtered.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:14px">Все матчи завершены ✅</div>';return;}
+  const stL={upcoming:'⏳ Скоро',live:'🔴 Live',grace:'🔴 Grace',ended:'⏹ Ожидает счёт',finished:'✅ Завершён'};
+  const stColor={upcoming:'var(--muted)',live:'#e74c3c',grace:'#e74c3c',ended:'var(--gold)',finished:'var(--green)'};
+  el.innerHTML=filtered.map(m=>{
     const mtp=m.match_time.split(/[T:\-]/);
     const months2=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
-    const dt=`${parseInt(mtp[2])} ${months2[parseInt(mtp[1])]}., ${mtp[3]}:${mtp[4]} МСК`;
-    const pi=m.predictions.length?m.predictions.map(p=>`${p.name}:${p.home_score}:${p.away_score}`).join(' · '):'нет';
-    return`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
-      <div>
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px">${teamHtml(m.home_team)}<span style="color:var(--muted);font-weight:700">vs</span>${teamHtml(m.away_team)}</div>
-        <div style="font-size:11px;color:var(--muted)">${dt} · ${stL[m.status]||m.status}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">Прогнозы: ${pi}</div>
+    const dt=`${parseInt(mtp[2])} ${months2[parseInt(mtp[1])]}., ${mtp[3]}:${mtp[4]}`;
+    const needsScore=m.status==='live'||m.status==='grace'||m.status==='ended';
+    const isFinished=m.status==='finished';
+    const hs=m.home_score??'';const as=m.away_score??'';
+    let scoreBlock='';
+    if(needsScore){
+      scoreBlock=`<div style="display:flex;align-items:center;gap:4px">
+        <input type="number" id="ah-${m.id}" min="0" max="99" value="" placeholder="—" style="width:40px;padding:6px 2px;text-align:center;border-radius:8px;border:1px solid var(--gold);background:var(--card);color:var(--text);font-size:16px;font-family:'Oswald',sans-serif;font-weight:700">
+        <span style="font-weight:700;color:var(--muted)">:</span>
+        <input type="number" id="aa-${m.id}" min="0" max="99" value="" placeholder="—" style="width:40px;padding:6px 2px;text-align:center;border-radius:8px;border:1px solid var(--gold);background:var(--card);color:var(--text);font-size:16px;font-family:'Oswald',sans-serif;font-weight:700">
+        <button class="btn btn-gold btn-sm" onclick="saveResult(${m.id})" style="padding:5px 10px;font-size:13px">💾</button>
+      </div>`;
+    } else if(isFinished){
+      scoreBlock=`<div style="display:flex;align-items:center;gap:4px" id="score-display-${m.id}">
+        <span style="color:var(--green);font-family:'Oswald';font-size:20px;font-weight:700">${hs}:${as}</span>
+        <button class="btn btn-ghost btn-sm" onclick="editResult(${m.id},${hs},${as})" title="Исправить" style="padding:3px 6px;font-size:12px">✏️</button>
       </div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
-        ${m.status==='upcoming'?`<span style="font-size:10px;color:var(--muted);font-weight:700">⏳ АВТО</span>`:''}
-        ${m.status==='live'||m.status==='grace'||m.status==='ended'?`<button class="btn btn-gold btn-sm" onclick="promptResult(${m.id})">Ввести счёт</button>`:''}
-        ${m.status==='finished'?`<span style="display:flex;align-items:center;gap:6px"><span style="color:var(--green);font-family:'Oswald';font-size:18px;font-weight:700">${m.home_score}:${m.away_score}</span><button class="btn btn-ghost btn-sm" onclick="promptResult(${m.id})" title="Исправить счёт">✏️</button></span>`:''}
-        <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})">✕</button>
+      <div style="display:none;align-items:center;gap:4px" id="score-edit-${m.id}">
+        <input type="number" id="ah-${m.id}" min="0" max="99" value="${hs}" style="width:40px;padding:6px 2px;text-align:center;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:16px;font-family:'Oswald',sans-serif;font-weight:700">
+        <span style="font-weight:700;color:var(--muted)">:</span>
+        <input type="number" id="aa-${m.id}" min="0" max="99" value="${as}" style="width:40px;padding:6px 2px;text-align:center;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:16px;font-family:'Oswald',sans-serif;font-weight:700">
+        <button class="btn btn-gold btn-sm" onclick="saveResult(${m.id})" style="padding:5px 10px;font-size:13px">💾</button>
+        <button class="btn btn-ghost btn-sm" onclick="cancelEdit(${m.id})" style="padding:3px 6px;font-size:12px">✕</button>
+      </div>`;
+    }
+    return`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">${teamHtml(m.home_team)}<span style="color:var(--muted);font-weight:700;font-size:13px">vs</span>${teamHtml(m.away_team)}</div>
+        <div style="font-size:11px;color:var(--muted)">${dt} · <span style="color:${stColor[m.status]||'var(--muted)'};font-weight:600">${stL[m.status]||m.status}</span></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        ${scoreBlock}
+        <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})" style="padding:3px 7px;font-size:11px" title="Удалить">✕</button>
       </div>
     </div>`;
   }).join('');
 }
-async function promptResult(id){
-  const score=prompt('Счёт матча (например: 2:1)');if(!score)return;
-  const [h,a]=score.split(':').map(Number);if(isNaN(h)||isNaN(a)){toast('Неверный формат','err');return;}
-  await fetch(`/api/admin/matches/${id}/result`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({home_score:h,away_score:a})});
-  toast('Результат сохранён ✅');loadAdminMatches();loadMatches();
+function editResult(id,h,a){
+  document.getElementById('score-display-'+id).style.display='none';
+  document.getElementById('score-edit-'+id).style.display='flex';
+}
+function cancelEdit(id){
+  document.getElementById('score-display-'+id).style.display='flex';
+  document.getElementById('score-edit-'+id).style.display='none';
+}
+async function saveResult(id){
+  const hEl=document.getElementById('ah-'+id),aEl=document.getElementById('aa-'+id);
+  const h=parseInt(hEl.value),a=parseInt(aEl.value);
+  if(isNaN(h)||isNaN(a)||h<0||a<0){toast('Введите счёт','err');return;}
+  const res=await fetch(`/api/admin/matches/${id}/result`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({home_score:h,away_score:a})});
+  if(res.ok){toast('Результат сохранён ✅');loadAdminMatches();loadMatches();}
+  else toast('Ошибка сохранения','err');
 }
 async function deleteMatch(id){
   if(!confirm('Удалить матч?'))return;
