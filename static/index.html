@@ -956,11 +956,11 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
       <div class="admin-block">
         <h3>📋 Управление матчами</h3>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;margin-bottom:12px">
-          <input type="checkbox" id="hide-finished-matches" onchange="loadAdminMatches()">
+          <input type="checkbox" id="hide-finished-matches" onchange="localStorage.setItem('adm_hide_fin',this.checked);loadAdminMatches()">
           <span>Скрыть завершённые матчи</span>
         </label>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px;margin-bottom:12px">
-          <input type="checkbox" id="show-predictions" checked onchange="loadAdminMatches()">
+          <input type="checkbox" id="show-predictions" checked onchange="localStorage.setItem('adm_show_pred',this.checked);loadAdminMatches()">
           <span>Показывать прогнозы участников</span>
         </label>
         <div id="admin-matches-list"></div>
@@ -2110,9 +2110,16 @@ async function loadAdmin(){
     switchPrizeMode(PRIZE_MODE);
   }catch(e){ renderPrizeRows(); }
   await loadPlayersTable();
+  restoreAdminCheckboxes();
   await loadAdminMatches();
   await loadDigestSettings();
   await loadWelcomeSettings();
+}
+function restoreAdminCheckboxes(){
+  const hf=localStorage.getItem('adm_hide_fin');
+  const sp=localStorage.getItem('adm_show_pred');
+  if(hf!==null)document.getElementById('hide-finished-matches').checked=(hf==='true');
+  if(sp!==null)document.getElementById('show-predictions').checked=(sp==='true');
 }
 
 async function importAllMatches(){
