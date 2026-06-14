@@ -1023,7 +1023,13 @@ async def set_result(match_id: int, body: ResultIn):
             pts = calc_points(p["home_score"],p["away_score"],body.home_score,body.away_score,bool(p["is_vabank"]))
             db.execute("UPDATE predictions SET points=? WHERE id=?", (pts,p["id"]))
     # Рассылка результатов после матча
-    asyncio.create_task(broadcast_match_result(match_id, body.home_score, body.away_score))
+    async def _broadcast_safe():
+        try:
+            await broadcast_match_result(match_id, body.home_score, body.away_score)
+        except Exception as e:
+            print(f"ERROR in broadcast_match_result: {e}")
+            import traceback; traceback.print_exc()
+    asyncio.create_task(_broadcast_safe())
     return {"ok":True}
 
 async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
@@ -1033,7 +1039,7 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
         preds = db.execute("""
             SELECT pl.name, pl.telegram_chat_id, p.home_score, p.away_score, p.points, p.is_vabank
             FROM predictions p JOIN players pl ON p.player_id=pl.id
-            WHERE p.match_id=? AND (pl.is_guest=0 OR pl.is_guest IS NULL) ORDER BY p.points DESC
+            WHERE p.match_id=? AND (pl.is_guest=0 OR pl.is_guest IS NULL) ORDER BY pl.name
         """, (match_id,)).fetchall()
         all_players = db.execute("SELECT id, name, telegram_chat_id FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
         # Общий рейтинг после матча
