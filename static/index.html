@@ -1330,7 +1330,17 @@ function renderMatch(m){
   const months=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
   const timeStr=`${d} ${months[mo]}., ${h}:${mi} МСК`;
   let badge='';
-  if(m.status==='upcoming')badge=`<span class="badge b-upcoming"><span class="dot"></span>Скоро</span>`;
+  if(m.status==='upcoming'){
+    // Вычисляем оставшееся время до матча (МСК)
+    const mskNow=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Moscow'}));
+    const matchDate=new Date(y,mo-1,d,parseInt(h),parseInt(mi));
+    const diffMin=Math.round((matchDate-mskNow)/60000);
+    let label='Скоро';
+    if(diffMin<=0) label='Вот-вот!';
+    else if(diffMin<60) label=`Через ${diffMin}мин`;
+    else if(diffMin<1440){const hrs=Math.floor(diffMin/60);const mins=diffMin%60;label=mins>0?`Через ${hrs}ч ${mins}мин`:`Через ${hrs}ч`;}
+    badge=`<span class="badge b-upcoming"><span class="dot"></span>${label}</span>`;
+  }
   else if(m.status==='live')badge=`<span class="badge b-live"><span class="dot"></span>Live</span>`;
   else if(m.status==='grace')badge=`<span class="badge b-live"><span class="dot"></span>Live · ещё 1 мин!</span>`;
   else if(m.status==='ended')badge=`<span class="badge b-ended">⏹ FIN</span>`;
@@ -2340,13 +2350,23 @@ async function loadAdminMatches(){
   const hideFinished=document.getElementById('hide-finished-matches')?.checked;
   const filtered=hideFinished?matches.filter(m=>m.status!=='finished'):matches;
   if(!filtered.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:14px">Все матчи завершены ✅</div>';return;}
-  const stL={upcoming:'⏳ Скоро',live:'🔴 Live',grace:'🔴 Grace',ended:'⏹ Ожидает счёт',finished:'✅ Завершён'};
-  const stColor={upcoming:'var(--muted)',live:'#e74c3c',grace:'#e74c3c',ended:'var(--gold)',finished:'var(--green)'};
+  const stL={live:'🔴 Live',grace:'🔴 Grace',ended:'⏹ Ожидает счёт',finished:'✅ Завершён'};
+  const stColor={upcoming:'var(--gold)',live:'#e74c3c',grace:'#e74c3c',ended:'var(--gold)',finished:'var(--green)'};
   const showPreds=document.getElementById('show-predictions')?.checked;
+  const mskNow=new Date(new Date().toLocaleString('en-US',{timeZone:'Europe/Moscow'}));
   el.innerHTML=filtered.map(m=>{
     const mtp=m.match_time.split(/[T:\-]/);
     const months2=['','янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
     const dt=`${parseInt(mtp[2])} ${months2[parseInt(mtp[1])]}., ${mtp[3]}:${mtp[4]}`;
+    let stText=stL[m.status]||m.status;
+    if(m.status==='upcoming'){
+      const matchDate=new Date(parseInt(mtp[0]),parseInt(mtp[1])-1,parseInt(mtp[2]),parseInt(mtp[3]),parseInt(mtp[4]));
+      const diffMin=Math.round((matchDate-mskNow)/60000);
+      if(diffMin<=0) stText='⏳ Вот-вот!';
+      else if(diffMin<60) stText=`⏳ Через ${diffMin}мин`;
+      else if(diffMin<1440){const hrs=Math.floor(diffMin/60);const mins=diffMin%60;stText=mins>0?`⏳ Через ${hrs}ч ${mins}мин`:`⏳ Через ${hrs}ч`;}
+      else stText='⏳ Скоро';
+    }
     const needsScore=m.status==='live'||m.status==='grace'||m.status==='ended';
     const isFinished=m.status==='finished';
     const hs=m.home_score??'';const as=m.away_score??'';
@@ -2375,7 +2395,7 @@ async function loadAdminMatches(){
     return`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="flex:1;min-width:140px">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">${teamHtml(m.home_team)}<span style="color:var(--muted);font-weight:700;font-size:13px">vs</span>${teamHtml(m.away_team)}</div>
-        <div style="font-size:11px;color:var(--muted)">${dt} · <span style="color:${stColor[m.status]||'var(--muted)'};font-weight:600">${stL[m.status]||m.status}</span></div>
+        <div style="font-size:11px;color:var(--muted)">${dt} · <span style="color:${stColor[m.status]||'var(--muted)'};font-weight:600">${stText}</span></div>
         ${pi?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Прогнозы: ${pi}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
