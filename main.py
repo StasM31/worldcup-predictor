@@ -1041,7 +1041,7 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
             FROM predictions p JOIN players pl ON p.player_id=pl.id
             WHERE p.match_id=? AND (pl.is_guest=0 OR pl.is_guest IS NULL) ORDER BY pl.name
         """, (match_id,)).fetchall()
-        all_players = db.execute("SELECT id, name, telegram_chat_id FROM players WHERE is_guest=0 OR is_guest IS NULL").fetchall()
+        all_players = db.execute("SELECT id, name, telegram_chat_id FROM players WHERE is_guest=0 OR is_guest IS NULL ORDER BY name").fetchall()
         # Общий рейтинг после матча
         standings = db.execute("""
             SELECT pl.name,
