@@ -1277,20 +1277,20 @@ async function loadMatches(){
       </div>`;
     }
 
-    // Строим список: завершённые (если раскрыты) + кнопка + активные + предстоящие (если раскрыты)
-    let parts = [];
-    if(_showFinished) parts.push(...finished.map(m=>renderMatch(m)));
-    parts.push(...visibleActive.map(m=>renderMatch(m)));
+    // Строим список: завершённые (всегда в DOM, скрыты через display) + кнопка + активные
+    const finishedHtml = finished.map(m=>renderMatch(m)).join('');
 
     let html = '';
-    if(_showFinished){
-      html = finished.map(m=>renderMatch(m)).join('') + toggleBtn + '<div id="active-matches-anchor"></div>' + visibleActive.map(m=>renderMatch(m)).join('');
-    } else {
-      html = toggleBtn + visibleActive.map(m=>renderMatch(m)).join('');
+    if(finCount > 0){
+      html += `<div id="finished-matches-wrap" data-count="${finCount}" style="display:${_showFinished?'block':'none'}">${finishedHtml}</div>`;
     }
+    html += toggleBtn;
+    html += '<div id="active-matches-anchor"></div>';
 
-    if(!visibleActive.length && !(_showFinished && finished.length)){
-      html = toggleBtn + `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>`;
+    if(visibleActive.length){
+      html += visibleActive.map(m=>renderMatch(m)).join('');
+    } else if(!finCount) {
+      html += `<div class="empty"><div class="ico">🏁</div>Все матчи завершены</div>`;
     }
 
     if(hiddenCount > 0){
@@ -1316,11 +1316,29 @@ async function loadMatches(){
   }catch(e){toast(e.message,'err');}
 }
 
-async function toggleFinished(){
+function toggleFinished(){
   _showFinished = !_showFinished;
-  await loadMatches();
-  const target = document.getElementById(_showFinished ? 'active-matches-anchor' : 'finished-toggle-btn');
-  if(target) target.scrollIntoView({block:'start',behavior:'instant'});
+  const wrap = document.getElementById('finished-matches-wrap');
+  const btn = document.querySelector('#finished-toggle-btn button');
+
+  if(_showFinished && wrap){
+    // Показываем: замеряем, сколько пикселей добавится, и сдвигаем скролл
+    wrap.style.display = 'block';
+    const addedHeight = wrap.offsetHeight;
+    window.scrollBy(0, addedHeight);
+  } else if(wrap){
+    // Скрываем: убираем блок и прокручиваем к кнопке
+    wrap.style.display = 'none';
+    const el = document.getElementById('finished-toggle-btn');
+    if(el) el.scrollIntoView({block:'start',behavior:'instant'});
+  }
+
+  if(btn && wrap){
+    const count = wrap.dataset.count || '0';
+    btn.innerHTML = _showFinished
+      ? `▲ Скрыть завершённые матчи (${count})`
+      : `▼ Показать завершённые матчи (${count})`;
+  }
 }
 
 let _showHiddenFuture = false;
