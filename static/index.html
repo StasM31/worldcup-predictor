@@ -1270,7 +1270,7 @@ async function loadMatches(){
       const btnText = _showFinished
         ? `▲ Скрыть завершённые матчи (${finCount})`
         : `▼ Показать завершённые матчи (${finCount})`;
-      toggleBtn = `<div style="text-align:center;margin-bottom:12px">
+      toggleBtn = `<div id="finished-toggle-btn" style="text-align:center;margin-bottom:12px">
         <button class="btn btn-ghost" style="font-size:12px;width:100%;justify-content:center" onclick="toggleFinished()">
           ${btnText}
         </button>
@@ -1319,6 +1319,7 @@ async function loadMatches(){
 function toggleFinished(){
   _showFinished = !_showFinished;
   loadMatches();
+  setTimeout(()=>{const el=document.getElementById('finished-toggle-btn');if(el)el.scrollIntoView({block:'center',behavior:'instant'});},50);
 }
 
 let _showHiddenFuture = false;
