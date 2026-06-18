@@ -1284,7 +1284,7 @@ async function loadMatches(){
 
     let html = '';
     if(_showFinished){
-      html = finished.map(m=>renderMatch(m)).join('') + toggleBtn + visibleActive.map(m=>renderMatch(m)).join('');
+      html = finished.map(m=>renderMatch(m)).join('') + toggleBtn + '<div id="active-matches-anchor"></div>' + visibleActive.map(m=>renderMatch(m)).join('');
     } else {
       html = toggleBtn + visibleActive.map(m=>renderMatch(m)).join('');
     }
@@ -1318,9 +1318,9 @@ async function loadMatches(){
 
 async function toggleFinished(){
   _showFinished = !_showFinished;
-  const scrollY = window.scrollY;
   await loadMatches();
-  window.scrollTo(0, scrollY);
+  const target = document.getElementById(_showFinished ? 'active-matches-anchor' : 'finished-toggle-btn');
+  if(target) target.scrollIntoView({block:'start',behavior:'instant'});
 }
 
 let _showHiddenFuture = false;
