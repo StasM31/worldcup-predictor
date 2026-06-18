@@ -1106,6 +1106,15 @@ def admin_matches():
         pred_map.setdefault(p["match_id"],[]).append(dict(p))
     return [dict(m)|{"predictions":pred_map.get(m["id"],[])} for m in rows]
 
+@app.get("/api/admin/tournament-result", dependencies=[Depends(require_admin)])
+def get_tournament_result_admin():
+    with get_db() as db:
+        result = db.execute("SELECT * FROM tournament_result WHERE id=1").fetchone()
+        teams_rows = db.execute("SELECT DISTINCT home_team FROM matches UNION SELECT DISTINCT away_team FROM matches ORDER BY 1").fetchall()
+    teams = [r[0] for r in teams_rows]
+    r = dict(result) if result else {"champion":"","finalist1":"","finalist2":"","top_scorer":""}
+    return {"result": r, "teams": teams}
+
 @app.post("/api/admin/tournament-result", dependencies=[Depends(require_admin)])
 def set_tournament_result(body: TournamentResultIn):
     with get_db() as db:
