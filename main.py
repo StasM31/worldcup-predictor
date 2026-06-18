@@ -1116,7 +1116,7 @@ def get_tournament_result_admin():
     return {"result": r, "teams": teams}
 
 @app.post("/api/admin/tournament-result", dependencies=[Depends(require_admin)])
-def set_tournament_result(body: TournamentResultIn):
+async def set_tournament_result(body: TournamentResultIn):
     with get_db() as db:
         db.execute("""INSERT INTO tournament_result (id,champion,finalist1,finalist2,top_scorer)
             VALUES (1,?,?,?,?)
@@ -1134,7 +1134,74 @@ def set_tournament_result(body: TournamentResultIn):
             third_pts = 5 if tp["top_scorer"] and tp["top_scorer"].lower().strip()==body.top_scorer.lower().strip() else 0
             db.execute("UPDATE tournament_predictions SET champion_pts=?,finalist_pts=?,scorer_pts=? WHERE player_id=?",
                       (c,f,third_pts,tp["player_id"]))
+    async def _broadcast_safe():
+        try:
+            await broadcast_tournament_result(body.champion, body.finalist1, body.finalist2, body.top_scorer)
+        except Exception as e:
+            print(f"ERROR in broadcast_tournament_result: {e}")
+            import traceback; traceback.print_exc()
+    asyncio.create_task(_broadcast_safe())
     return {"ok":True}
+
+async def broadcast_tournament_result(champion, finalist1, finalist2, top_scorer):
+    """Рассылает итоги турнира и бонусные очки всем участникам."""
+    with get_db() as db:
+        players = db.execute("""
+            SELECT pl.name, pl.telegram_chat_id,
+                   tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer,
+                   tp.champion_pts, tp.finalist_pts, tp.scorer_pts
+            FROM players pl
+            LEFT JOIN tournament_predictions tp ON pl.id=tp.player_id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
+            ORDER BY pl.name
+        """).fetchall()
+        standings = db.execute("""
+            SELECT pl.name,
+                   COALESCE(SUM(p.points),0)+COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as total
+            FROM players pl
+            LEFT JOIN predictions p ON pl.id=p.player_id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
+            GROUP BY pl.id ORDER BY total DESC
+        """).fetchall()
+
+    champ_f = team_with_flag(champion)
+    fin1_f = team_with_flag(finalist1)
+    fin2_f = team_with_flag(finalist2)
+    third_f = team_with_flag(top_scorer) if top_scorer else '—'
+    medals = ['🥇','🥈','🥉']
+
+    lines = [
+        "🏆 <b>Итоги турнира — бонусные очки!</b>",
+        "",
+        f"⚽ Чемпион: {champ_f}",
+        f"⚽ Финалисты: {fin1_f} / {fin2_f}",
+        f"⚽ 3-е место: {third_f}",
+        "",
+        "📊 <b>Бонусы участников:</b>",
+        "",
+    ]
+
+    for pl in players:
+        total_bonus = (pl["champion_pts"] or 0) + (pl["finalist_pts"] or 0) + (pl["scorer_pts"] or 0)
+        details = []
+        if pl["champion_pts"]: details.append(f"чемпион +{pl['champion_pts']}")
+        if pl["finalist_pts"]: details.append(f"финалист +{pl['finalist_pts']}")
+        if pl["scorer_pts"]: details.append(f"3-е место +{pl['scorer_pts']}")
+        detail_str = f" ({', '.join(details)})" if details else ""
+        lines.append(f"• {esc(pl['name'])} — <b>{total_bonus}⭐</b>{detail_str}")
+
+    lines.append("")
+    lines.append("🏆 <b>Итоговая таблица лидеров:</b>")
+    lines.append("")
+    for i, r in enumerate(standings):
+        medal = medals[i] if i < 3 else f"{i+1}."
+        lines.append(f"{medal} {esc(r['name'])} — <b>{r['total']} очк.</b>")
+
+    text = "\n".join(lines)
+    tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players if pl["telegram_chat_id"]]
+    if tasks:
+        await asyncio.gather(*tasks)
+    print("Tournament result broadcast sent!")
 
 @app.get("/api/tournament-settings")
 def get_tournament_settings(token: str):
