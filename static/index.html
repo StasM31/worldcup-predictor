@@ -1316,10 +1316,11 @@ async function loadMatches(){
   }catch(e){toast(e.message,'err');}
 }
 
-function toggleFinished(){
+async function toggleFinished(){
   _showFinished = !_showFinished;
-  loadMatches();
-  setTimeout(()=>{const el=document.getElementById('finished-toggle-btn');if(el)el.scrollIntoView({block:'center',behavior:'instant'});},50);
+  const scrollY = window.scrollY;
+  await loadMatches();
+  window.scrollTo(0, scrollY);
 }
 
 let _showHiddenFuture = false;
