@@ -581,7 +581,7 @@ async def send_daily_digest():
                    SUM(CASE WHEN p.points=1 THEN 1 ELSE 0 END) as outcome_hits
             FROM players pl LEFT JOIN predictions p ON pl.id=p.player_id
             WHERE pl.is_guest=0 OR pl.is_guest IS NULL
-            GROUP BY pl.id ORDER BY total_points DESC""").fetchall()
+            GROUP BY pl.id ORDER BY total_points DESC, pl.name ASC""").fetchall()
         players = db.execute("SELECT telegram_chat_id FROM players WHERE telegram_chat_id IS NOT NULL AND (is_guest IS NULL OR is_guest=0)").fetchall()
     if not rows: return
     medals = ['🥇','🥈','🥉']
@@ -861,7 +861,7 @@ def leaderboard(token: str):
                    COALESCE((SELECT champion_pts+finalist_pts+scorer_pts FROM tournament_predictions tp WHERE tp.player_id=pl.id),0) as tournament_bonus
             FROM players pl LEFT JOIN predictions p ON pl.id=p.player_id
             WHERE pl.is_guest=0 OR pl.is_guest IS NULL
-            GROUP BY pl.id ORDER BY total_points DESC""").fetchall()
+            GROUP BY pl.id ORDER BY total_points DESC, pl.name ASC""").fetchall()
     return [dict(r) for r in rows]
 
 @app.get("/api/archive")
@@ -1049,7 +1049,7 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
             FROM players pl
             LEFT JOIN predictions p ON pl.id=p.player_id
             WHERE pl.is_guest=0 OR pl.is_guest IS NULL
-            GROUP BY pl.id ORDER BY total DESC
+            GROUP BY pl.id ORDER BY total DESC, pl.name ASC
         """).fetchall()
     if not match:
         return
@@ -1161,7 +1161,7 @@ async def broadcast_tournament_result(champion, finalist1, finalist2, top_scorer
             FROM players pl
             LEFT JOIN predictions p ON pl.id=p.player_id
             WHERE pl.is_guest=0 OR pl.is_guest IS NULL
-            GROUP BY pl.id ORDER BY total DESC
+            GROUP BY pl.id ORDER BY total DESC, pl.name ASC
         """).fetchall()
 
     champ_f = team_with_flag(champion)
