@@ -1032,6 +1032,38 @@ def set_match_stage(match_id: int, body: StageIn):
         db.execute("UPDATE matches SET stage=? WHERE id=?", (stage, match_id))
     return {"ok": True, "stage": stage}
 
+class MatchEditIn(BaseModel):
+    home_team: Optional[str] = None
+    away_team: Optional[str] = None
+    stage: Optional[str] = None
+
+@app.post("/api/admin/matches/{match_id}/edit", dependencies=[Depends(require_admin)])
+def edit_match(match_id: int, body: MatchEditIn):
+    """Редактирует названия команд и/или стадию. Меняет только переданные поля,
+    не трогает время, счёт, статус и прогнозы."""
+    with get_db() as db:
+        m = db.execute("SELECT id FROM matches WHERE id=?", (match_id,)).fetchone()
+        if not m:
+            raise HTTPException(404, "Матч не найден")
+        fields, values = [], []
+        if body.home_team is not None:
+            home = body.home_team.strip()
+            if not home:
+                raise HTTPException(400, "Название команды не может быть пустым")
+            fields.append("home_team=?"); values.append(home)
+        if body.away_team is not None:
+            away = body.away_team.strip()
+            if not away:
+                raise HTTPException(400, "Название команды не может быть пустым")
+            fields.append("away_team=?"); values.append(away)
+        if body.stage is not None:
+            fields.append("stage=?"); values.append(body.stage.strip() or None)
+        if fields:
+            values.append(match_id)
+            db.execute(f"UPDATE matches SET {', '.join(fields)} WHERE id=?", values)
+        row = db.execute("SELECT home_team, away_team, stage FROM matches WHERE id=?", (match_id,)).fetchone()
+    return {"ok": True, **dict(row)}
+
 @app.post("/api/admin/matches/{match_id}/result", dependencies=[Depends(require_admin)])
 async def set_result(match_id: int, body: ResultIn):
     with get_db() as db:

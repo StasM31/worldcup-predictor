@@ -2489,7 +2489,7 @@ async function loadAdminMatches(){
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${scoreBlock}
-        <button class="btn btn-ghost btn-sm" onclick="editStage(${m.id})" style="padding:3px 7px;font-size:11px" title="Изменить стадию">🏆</button>
+        <button class="btn btn-ghost btn-sm" onclick="editStage(${m.id})" style="padding:3px 7px;font-size:11px" title="Редактировать команды и стадию">📝</button>
         <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})" style="padding:3px 7px;font-size:11px" title="Удалить">✕</button>
       </div>
     </div>`;
@@ -2524,13 +2524,21 @@ function editStage(id){
   const opts=['<option value="">— Без стадии —</option>']
     .concat(STAGE_OPTIONS.map(s=>`<option value="${escapeHtml(s)}"${s===cur?' selected':''}>${escapeHtml(s)}</option>`))
     .join('');
+  const homeVal=m?escapeHtml(m.home_team):'';
+  const awayVal=m?escapeHtml(m.away_team):'';
   const modal=document.createElement('div');
   modal.className='modal-overlay';
   modal.innerHTML=`<div class="modal" style="max-width:380px">
     <div class="modal-body" style="padding:24px">
-      <h3 style="margin-bottom:16px;font-family:'Oswald',sans-serif">🏆 Стадия матча</h3>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">${m?escapeHtml(m.home_team)+' vs '+escapeHtml(m.away_team):''}</p>
-      <select id="stage-select" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px">${opts}</select>
+      <h3 style="margin-bottom:16px;font-family:'Oswald',sans-serif">✏️ Редактировать матч</h3>
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Команды</label>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0 16px">
+        <input id="edit-home" value="${homeVal}" placeholder="Команда 1" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px">
+        <span style="color:var(--muted);font-weight:700;font-size:13px">vs</span>
+        <input id="edit-away" value="${awayVal}" placeholder="Команда 2" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px">
+      </div>
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">🏆 Стадия</label>
+      <select id="stage-select" style="width:100%;margin-top:6px;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px">${opts}</select>
       <div style="display:flex;gap:10px;margin-top:18px">
         <button onclick="this.closest('.modal-overlay').remove()" style="flex:1;padding:11px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:'Manrope',sans-serif">Отмена</button>
         <button onclick="saveStage(${id},this)" style="flex:1;padding:11px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif">💾 Сохранить</button>
@@ -2541,13 +2549,16 @@ function editStage(id){
   document.body.appendChild(modal);
 }
 async function saveStage(id,btn){
+  const home=document.getElementById('edit-home').value.trim();
+  const away=document.getElementById('edit-away').value.trim();
   const stage=document.getElementById('stage-select').value;
+  if(!home||!away){toast('Названия команд не могут быть пустыми','err');return;}
   btn.disabled=true;btn.textContent='⏳';
-  const res=await fetch(`/api/admin/matches/${id}/stage`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({stage:stage||null})});
+  const res=await fetch(`/api/admin/matches/${id}/edit`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({home_team:home,away_team:away,stage:stage||null})});
   if(res.ok){
     document.querySelector('.modal-overlay')?.remove();
-    toast('Стадия обновлена ✅');loadAdminMatches();loadMatches();
-  } else {btn.disabled=false;btn.textContent='💾 Сохранить';toast('Ошибка','err');}
+    toast('Матч обновлён ✅');loadAdminMatches();loadMatches();
+  } else {btn.disabled=false;btn.textContent='💾 Сохранить';const e=await res.json().catch(()=>({}));toast(e.detail||'Ошибка','err');}
 }
 
 
