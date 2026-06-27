@@ -244,6 +244,8 @@ body.dark-theme .match-card.finished-card .vs{color:#64748b;}
 .vs{font-family:'Oswald',sans-serif;font-size:12px;color:var(--muted);padding:0 2px;}
 .match-meta{text-align:right;flex-shrink:0;}
 .match-time{font-size:11px;color:var(--muted);margin-bottom:5px;font-family:'Oswald',sans-serif;letter-spacing:.5px;}
+.match-stage{display:inline-block;font-size:11px;font-weight:700;color:var(--navy,#1a3a5c);background:var(--bg,#f0f2f5);border:1px solid var(--border2,#d8dde3);border-radius:6px;padding:3px 9px;margin:4px 0 8px;letter-spacing:.3px;}
+body.dark-theme .match-stage{color:var(--text2);background:#0d1825;border-color:var(--border);}
 
 /* Badges */
 .badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:20px;font-family:'Oswald',sans-serif;}
@@ -859,6 +861,17 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
         <div class="form-row">
           <input id="m-home" placeholder="Команда 1" style="min-width:130px">
           <input id="m-away" placeholder="Команда 2" style="min-width:130px">
+          <select id="m-stage" style="min-width:150px">
+            <option value="">Стадия (необязательно)</option>
+            <option value="Групповой этап">Групповой этап</option>
+            <option value="1/32 финала">1/32 финала</option>
+            <option value="1/16 финала">1/16 финала</option>
+            <option value="1/8 финала">1/8 финала</option>
+            <option value="1/4 финала">1/4 финала</option>
+            <option value="1/2 финала">1/2 финала</option>
+            <option value="Матч за 3-е место">Матч за 3-е место</option>
+            <option value="Финал">Финал</option>
+          </select>
         </div>
         <div class="form-row" style="align-items:center;flex-wrap:wrap;gap:8px">
           <input id="m-day" type="number" min="1" max="31" placeholder="День" style="width:68px;text-align:center">
@@ -1102,6 +1115,7 @@ function flagUrl(name){
   const c=CC[k]||Object.entries(CC).find(([x])=>k.includes(x)||x.includes(k))?.[1];
   return c?`https://flagcdn.com/w40/${c}.png`:null;
 }
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function teamHtml(name){
   const url=flagUrl(name);
   const fl=url
@@ -1255,6 +1269,7 @@ async function loadTournamentBanner(){
   } catch(e){ console.log('Banner error:', e); }
 }
 let _showFinished = false;
+let _adminMatches = [];
 
 async function loadMatches(){
   try{
@@ -1450,6 +1465,9 @@ function renderMatch(m){
   const hasPred = !!m.my_prediction;
   const cardClass = isVb ? 'vabank-card' : m.status==='finished' ? 'finished-card' : '';
   const checkmark = '';
+  const stageHtml = m.stage
+    ? `<div class="match-stage">🏆 ${escapeHtml(m.stage)}</div>`
+    : '';
   return `<div class="match-card ${cardClass}" id="match-${m.id}">
     ${checkmark}
     ${ballSvg}
@@ -1457,6 +1475,7 @@ function renderMatch(m){
       <div class="teams-row">${teamHtml(m.home_team)}<span class="vs">vs</span>${teamHtml(m.away_team)}</div>
       <div class="match-meta"><div class="match-time">${timeStr}</div>${timerHtml}${badge}</div>
     </div>
+    ${stageHtml}
     ${result}${pred}${predsSection}
   </div>`;
 }
@@ -2232,6 +2251,7 @@ async function addPlayer(){
 async function addMatch(){
   const home=document.getElementById("m-home").value.trim();
   const away=document.getElementById("m-away").value.trim();
+  const stage=document.getElementById("m-stage").value;
   const day=parseInt(document.getElementById("m-day").value);
   const month=parseInt(document.getElementById("m-month").value);
   const year=parseInt(document.getElementById("m-year").value);
@@ -2243,9 +2263,10 @@ async function addMatch(){
   const mm=String(month).padStart(2,'0'), dd=String(day).padStart(2,'0');
   const hh=String(hour).padStart(2,'0'), mi=String(min).padStart(2,'0');
   const matchTime=`${year}-${mm}-${dd}T${hh}:${mi}`;
-  const res=await fetch("/api/admin/matches",{method:"POST",headers:{"Content-Type":"application/json","x-admin-token":state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:matchTime})});
+  const res=await fetch("/api/admin/matches",{method:"POST",headers:{"Content-Type":"application/json","x-admin-token":state.adminToken},body:JSON.stringify({home_team:home,away_team:away,match_time:matchTime,stage:stage||null})});
   if(res.ok){
     document.getElementById("m-home").value=document.getElementById("m-away").value="";
+    document.getElementById("m-stage").value="";
     document.getElementById("m-day").value=document.getElementById("m-month").value=document.getElementById("m-hour").value="";
     document.getElementById("m-min").value="0";
     toast("Матч добавлен! ✅");loadAdminMatches();loadMatches();
@@ -2414,6 +2435,7 @@ async function setTournamentResult(){
 }
 async function loadAdminMatches(){
   const matches=await fetch('/api/admin/matches',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
+  _adminMatches=matches;
   const el=document.getElementById('admin-matches-list');
   if(!matches.length){el.innerHTML='<div class="empty" style="padding:24px"><div class="ico">📅</div>Матчей нет</div>';return;}
   const hideFinished=document.getElementById('hide-finished-matches')?.checked;
@@ -2458,14 +2480,16 @@ async function loadAdminMatches(){
       </div>`;
     }
     const pi=showPreds?(m.predictions.length?m.predictions.map(p=>p.name+':'+p.home_score+':'+p.away_score).join(' · '):'нет'):'';
+    const stageLabel=m.stage?`<span style="color:var(--navy,#1a3a5c);font-weight:700"> · 🏆 ${escapeHtml(m.stage)}</span>`:'';
     return`<div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
       <div style="flex:1;min-width:140px">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">${teamHtml(m.home_team)}<span style="color:var(--muted);font-weight:700;font-size:13px">vs</span>${teamHtml(m.away_team)}</div>
-        <div style="font-size:11px;color:var(--muted)">${dt} · <span style="color:${stClr};font-weight:600">${stText}</span></div>
+        <div style="font-size:11px;color:var(--muted)">${dt} · <span style="color:${stClr};font-weight:600">${stText}</span>${stageLabel}</div>
         ${pi?`<div style="font-size:11px;color:var(--muted);margin-top:2px">Прогнозы: ${pi}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${scoreBlock}
+        <button class="btn btn-ghost btn-sm" onclick="editStage(${m.id})" style="padding:3px 7px;font-size:11px" title="Изменить стадию">🏆</button>
         <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})" style="padding:3px 7px;font-size:11px" title="Удалить">✕</button>
       </div>
     </div>`;
@@ -2491,6 +2515,39 @@ async function deleteMatch(id){
   if(!confirm('Удалить матч?'))return;
   await fetch(`/api/admin/matches/${id}`,{method:'DELETE',headers:{'x-admin-token':state.adminToken}});
   toast('Удалён','info');loadAdminMatches();loadMatches();
+}
+
+const STAGE_OPTIONS=['Групповой этап','1/32 финала','1/16 финала','1/8 финала','1/4 финала','1/2 финала','Матч за 3-е место','Финал'];
+function editStage(id){
+  const m=_adminMatches.find(x=>x.id===id);
+  const cur=m&&m.stage?m.stage:'';
+  const opts=['<option value="">— Без стадии —</option>']
+    .concat(STAGE_OPTIONS.map(s=>`<option value="${escapeHtml(s)}"${s===cur?' selected':''}>${escapeHtml(s)}</option>`))
+    .join('');
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';
+  modal.innerHTML=`<div class="modal" style="max-width:380px">
+    <div class="modal-body" style="padding:24px">
+      <h3 style="margin-bottom:16px;font-family:'Oswald',sans-serif">🏆 Стадия матча</h3>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:12px">${m?escapeHtml(m.home_team)+' vs '+escapeHtml(m.away_team):''}</p>
+      <select id="stage-select" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px">${opts}</select>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button onclick="this.closest('.modal-overlay').remove()" style="flex:1;padding:11px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:'Manrope',sans-serif">Отмена</button>
+        <button onclick="saveStage(${id},this)" style="flex:1;padding:11px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif">💾 Сохранить</button>
+      </div>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+async function saveStage(id,btn){
+  const stage=document.getElementById('stage-select').value;
+  btn.disabled=true;btn.textContent='⏳';
+  const res=await fetch(`/api/admin/matches/${id}/stage`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({stage:stage||null})});
+  if(res.ok){
+    document.querySelector('.modal-overlay')?.remove();
+    toast('Стадия обновлена ✅');loadAdminMatches();loadMatches();
+  } else {btn.disabled=false;btn.textContent='💾 Сохранить';toast('Ошибка','err');}
 }
 
 

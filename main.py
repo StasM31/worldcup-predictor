@@ -148,6 +148,12 @@ try:
         _db.execute("ALTER TABLE tournament_settings ADD COLUMN welcome_sent INTEGER DEFAULT 0")
 except sqlite3.OperationalError:
     pass
+# Migration: add stage (стадия матча: 1/16, финал и т.д.) if missing
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE matches ADD COLUMN stage TEXT")
+except sqlite3.OperationalError:
+    pass  # колонка уже существует
 
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
@@ -941,7 +947,7 @@ def get_all_tournament_predictions(token: str):
 class PlayerIn(BaseModel):
     name: str; telegram_chat_id: Optional[str] = None
 class MatchIn(BaseModel):
-    home_team: str; away_team: str; match_time: str
+    home_team: str; away_team: str; match_time: str; stage: Optional[str] = None
 class MatchBatchIn(BaseModel):
     matches: List[MatchIn]
 class ResultIn(BaseModel):
@@ -989,8 +995,8 @@ def delete_player(player_id: int):
 @app.post("/api/admin/matches", dependencies=[Depends(require_admin)])
 def add_match(body: MatchIn):
     with get_db() as db:
-        cur = db.execute("INSERT INTO matches (home_team,away_team,match_time) VALUES (?,?,?)",
-                        (body.home_team,body.away_team,body.match_time))
+        cur = db.execute("INSERT INTO matches (home_team,away_team,match_time,stage) VALUES (?,?,?,?)",
+                        (body.home_team,body.away_team,body.match_time,body.stage))
     return {"id":cur.lastrowid}
 
 @app.post("/api/admin/matches/batch", dependencies=[Depends(require_admin)])
@@ -999,8 +1005,8 @@ def add_matches_batch(body: MatchBatchIn):
     with get_db() as db:
         for m in body.matches:
             try:
-                db.execute("INSERT INTO matches (home_team,away_team,match_time) VALUES (?,?,?)",
-                          (m.home_team,m.away_team,m.match_time))
+                db.execute("INSERT INTO matches (home_team,away_team,match_time,stage) VALUES (?,?,?,?)",
+                          (m.home_team,m.away_team,m.match_time,m.stage))
                 added += 1
             except Exception as e:
                 print(f"Batch error: {e}")
@@ -1012,6 +1018,19 @@ def delete_match(match_id: int):
         db.execute("DELETE FROM predictions WHERE match_id=?", (match_id,))
         db.execute("DELETE FROM matches WHERE id=?", (match_id,))
     return {"ok":True}
+
+class StageIn(BaseModel):
+    stage: Optional[str] = None
+
+@app.post("/api/admin/matches/{match_id}/stage", dependencies=[Depends(require_admin)])
+def set_match_stage(match_id: int, body: StageIn):
+    stage = (body.stage or "").strip() or None
+    with get_db() as db:
+        m = db.execute("SELECT id FROM matches WHERE id=?", (match_id,)).fetchone()
+        if not m:
+            raise HTTPException(404, "Матч не найден")
+        db.execute("UPDATE matches SET stage=? WHERE id=?", (stage, match_id))
+    return {"ok": True, "stage": stage}
 
 @app.post("/api/admin/matches/{match_id}/result", dependencies=[Depends(require_admin)])
 async def set_result(match_id: int, body: ResultIn):
