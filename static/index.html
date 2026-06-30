@@ -1430,7 +1430,7 @@ function renderMatch(m){
         <span class="score-colon ${hasExisting?'score-done-sep':''}">:</span>
         <input class="score-input ${hasExisting?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aVal}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value=this.value||'0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThis?'true':'false'})">${hasExisting?'Изменить':'Поставить'}</button>
-        ${vbUsedOnThis?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк поставлен на этот матч">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:'') }
+        ${vbUsedOnThis?`<button class="btn btn-vabank btn-sm used" onclick="cancelVabank(${m.id})" title="Отменить ва-банк (доступно до начала матча)">✖ Отменить ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)" title="🔥 Ва-банк — ×3 очки!">🔥 Ва-банк</button>`:'') }
       </div></div>`;
   } else if(m.status==='grace'){
     // В грейс-период можно и ставить и менять прогноз
@@ -1445,7 +1445,7 @@ function renderMatch(m){
         <span class="score-colon ${hasExistingGrace?'score-done-sep':''}">:</span>
         <input class="score-input ${hasExistingGrace?'score-done':''}" id="a-${m.id}" type="number" min="0" max="20" value="${aValG}" onblur="if(this.value===''&&this.dataset.existing==='true')this.value='0'" onfocus="if(this.value==='0')this.value=''" onblur="if(this.value==='')this.value=this.value||'0'" inputmode="numeric">
         <button class="btn btn-primary btn-sm" onclick="submitPred(${m.id},${vbUsedOnThisG?'true':'false'})">${hasExistingGrace?'Изменить':'Поставить'}</button>
-        ${vbUsedOnThisG?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:'')}
+        ${vbUsedOnThisG?`<button class="btn btn-vabank btn-sm used" onclick="cancelVabank(${m.id})" title="Отменить ва-банк">✖ Отменить ва-банк</button>`:(!state.vabankUsed?`<button class="btn btn-vabank btn-sm" onclick="submitPred(${m.id},true)">🔥 Ва-банк</button>`:'')}
       </div></div>`;
   } else if(m.status==='live'||m.status==='ended'){
     pred=`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-weight:700;letter-spacing:1px">🔒 СТАВКИ ЗАКРЫТЫ</div>`;
@@ -1607,6 +1607,21 @@ async function submitPred(matchId,isVabank){
     await api(`/api/predict/${matchId}`,{method:'POST',body:JSON.stringify({token:state.token,home_score:h,away_score:a,is_vabank:isVabank})});
     if(isVabank){state.vabankUsed=true;toast('🔥 Ва-банк поставлен!');}
     else toast('Прогноз сохранён! 🎯');
+    loadMatches();
+  }catch(e){toast(e.message,'err');}
+}
+async function cancelVabank(matchId){
+  if(state.isAdmin||state.isGuest)return;
+  if(!confirm('Отменить ва-банк на этом матче? Прогноз на счёт сохранится, а ва-банк снова станет доступен для другого матча.'))return;
+  const hVal=document.getElementById(`h-${matchId}`).value;
+  const aVal=document.getElementById(`a-${matchId}`).value;
+  if(hVal===''||aVal===''){toast('Введи счёт для обеих команд','err');return;}
+  const h=parseInt(hVal); const a=parseInt(aVal);
+  if(isNaN(h)||isNaN(a)||h<0||a<0){toast('Введи корректный счёт','err');return;}
+  try{
+    await api(`/api/predict/${matchId}`,{method:'POST',body:JSON.stringify({token:state.token,home_score:h,away_score:a,is_vabank:false})});
+    state.vabankUsed=false;
+    toast('Ва-банк отменён ✅');
     loadMatches();
   }catch(e){toast(e.message,'err');}
 }
