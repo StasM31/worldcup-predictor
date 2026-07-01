@@ -154,6 +154,53 @@ try:
         _db.execute("ALTER TABLE matches ADD COLUMN stage TEXT")
 except sqlite3.OperationalError:
     pass  # колонка уже существует
+# Migration: track which match a va-bank was placed on (для корректного учёта)
+try:
+    with get_db() as _db:
+        _db.execute("ALTER TABLE vabank_used ADD COLUMN match_id INTEGER")
+except sqlite3.OperationalError:
+    pass  # колонка уже существует
+
+def _normalize_vabank_data():
+    """Одноразовая починка данных после бага, при котором ва-банк, поставленный
+    поверх уже существующего прогноза, не отмечался в vabank_used. Из-за этого у
+    некоторых игроков могло оказаться несколько ва-банков. Оставляем один:
+    приоритет у уже сыгранного матча (там очки посчитаны), иначе — самый ранний.
+    Функция идемпотентна: при отсутствии дублей ничего не меняет."""
+    try:
+        with get_db() as db:
+            players = db.execute("SELECT DISTINCT player_id FROM predictions WHERE is_vabank=1").fetchall()
+            for row in players:
+                pid = row["player_id"]
+                vbs = db.execute("""
+                    SELECT p.match_id, m.status, m.match_time
+                    FROM predictions p JOIN matches m ON m.id=p.match_id
+                    WHERE p.player_id=? AND p.is_vabank=1
+                    ORDER BY (m.status IN ('finished','ended','live')) DESC, m.match_time ASC
+                """, (pid,)).fetchall()
+                if not vbs:
+                    continue
+                keep = vbs[0]["match_id"]
+                extra = [v["match_id"] for v in vbs[1:]]
+                if extra:
+                    # Снимаем лишние ва-банки только с НЕ сыгранных матчей, чтобы не трогать очки
+                    for mid in extra:
+                        st = next(v["status"] for v in vbs if v["match_id"]==mid)
+                        if st in ("finished","ended","live"):
+                            # конфликт: два ва-банка на сыгранных матчах — оставляем как есть, но логируем
+                            print(f"[vabank-fix] ВНИМАНИЕ: игрок {pid} имеет ва-банк на сыгранном матче {mid}, требуется ручная проверка")
+                            continue
+                        db.execute("UPDATE predictions SET is_vabank=0 WHERE player_id=? AND match_id=?", (pid, mid))
+                        print(f"[vabank-fix] игрок {pid}: снят лишний ва-банк с матча {mid}")
+                # Синхронизируем vabank_used с оставленным матчем
+                db.execute("INSERT OR REPLACE INTO vabank_used (player_id, match_id) VALUES (?,?)", (pid, keep))
+            # Чистим записи vabank_used у игроков, у которых по факту нет ни одного ва-банка
+            db.execute("""DELETE FROM vabank_used WHERE player_id NOT IN
+                          (SELECT DISTINCT player_id FROM predictions WHERE is_vabank=1)""")
+    except Exception as e:
+        print(f"[vabank-fix] ошибка нормализации: {e}")
+
+_normalize_vabank_data()
 
 def parse_dt(s):
     for fmt in ("%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
@@ -820,16 +867,23 @@ async def predict(match_id: int, body: PredictionIn):
         if not match: raise HTTPException(404,"Матч не найден")
         if match["status"] not in ("upcoming","grace"): raise HTTPException(400,"Приём ставок закрыт")
         existing = db.execute("SELECT id,is_vabank FROM predictions WHERE player_id=? AND match_id=?", (player["id"],match_id)).fetchone()
+        already_vabank_here = bool(existing and existing["is_vabank"])
         is_vabank = 0
         if body.is_vabank:
-            if not existing:
-                if db.execute("SELECT 1 FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone():
-                    raise HTTPException(400,"Ва-банк уже использован")
-                db.execute("INSERT OR IGNORE INTO vabank_used (player_id) VALUES (?)", (player["id"],))
+            # Разрешаем ва-банк, только если он ещё не занят ДРУГИМ матчем.
+            if not already_vabank_here:
+                used = db.execute("SELECT match_id FROM vabank_used WHERE player_id=?", (player["id"],)).fetchone()
+                if used and used["match_id"] is not None and used["match_id"] != match_id:
+                    raise HTTPException(400,"Ва-банк уже использован на другом матче")
+                # Подстраховка: снимаем флаг ва-банка со всех прочих матчей игрока
+                db.execute("UPDATE predictions SET is_vabank=0 WHERE player_id=? AND match_id!=?", (player["id"], match_id))
+            db.execute("INSERT OR REPLACE INTO vabank_used (player_id, match_id) VALUES (?,?)", (player["id"], match_id))
             is_vabank = 1
+        else:
+            # Игрок снимает ва-банк с этого матча — освобождаем его.
+            if already_vabank_here:
+                db.execute("DELETE FROM vabank_used WHERE player_id=? AND match_id=?", (player["id"], match_id))
         if existing:
-            if existing["is_vabank"] and not is_vabank:
-                db.execute("DELETE FROM vabank_used WHERE player_id=?", (player["id"],))
             db.execute("UPDATE predictions SET home_score=?,away_score=?,is_vabank=? WHERE player_id=? AND match_id=?",
                       (body.home_score,body.away_score,is_vabank,player["id"],match_id))
         else:
@@ -981,6 +1035,23 @@ def set_guest(player_id: int, body: dict):
     with get_db() as db:
         db.execute("UPDATE players SET is_guest=? WHERE id=?", (1 if body.get("is_guest") else 0, player_id))
     return {"ok": True}
+
+@app.get("/api/admin/vabank-list", dependencies=[Depends(require_admin)])
+def vabank_list():
+    """Кто на какой матч поставил ва-банк, с прогнозом и результатом."""
+    with get_db() as db:
+        rows = db.execute("""
+            SELECT pl.name, pl.id as player_id,
+                   m.id as match_id, m.home_team, m.away_team, m.stage,
+                   m.match_time, m.status, m.home_score as real_home, m.away_score as real_away,
+                   p.home_score, p.away_score, p.points
+            FROM predictions p
+            JOIN players pl ON pl.id = p.player_id
+            JOIN matches m ON m.id = p.match_id
+            WHERE p.is_vabank = 1
+            ORDER BY pl.name COLLATE NOCASE ASC
+        """).fetchall()
+    return [dict(r) for r in rows]
 
 @app.delete("/api/admin/players/{player_id}", dependencies=[Depends(require_admin)])
 def delete_player(player_id: int):
