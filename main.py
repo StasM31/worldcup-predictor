@@ -1154,6 +1154,88 @@ async def set_result(match_id: int, body: ResultIn):
     asyncio.create_task(_broadcast_safe())
     return {"ok":True}
 
+class LatePredictionIn(BaseModel):
+    player_id: int
+    home_score: int
+    away_score: int
+    is_vabank: bool = False
+    notify: bool = True
+
+@app.post("/api/admin/matches/{match_id}/late-prediction", dependencies=[Depends(require_admin)])
+async def add_late_prediction(match_id: int, body: LatePredictionIn):
+    """Ручное исключение: админ вносит прогноз за участника, который не успел
+    поставить сам до начала матча (или до объявления результата). Обходит
+    обычную проверку статуса матча в /api/predict, но требует явного действия
+    администратора и не может быть вызвано без admin-токена."""
+    if body.home_score < 0 or body.away_score < 0:
+        raise HTTPException(400, "Счёт не может быть отрицательным")
+    with get_db() as db:
+        match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
+        if not match:
+            raise HTTPException(404, "Матч не найден")
+        player = db.execute("SELECT * FROM players WHERE id=?", (body.player_id,)).fetchone()
+        if not player:
+            raise HTTPException(404, "Участник не найден")
+        existing = db.execute("SELECT id,is_vabank FROM predictions WHERE player_id=? AND match_id=?",
+                              (body.player_id, match_id)).fetchone()
+        already_vabank_here = bool(existing and existing["is_vabank"])
+        is_vabank = 0
+        if body.is_vabank:
+            if not already_vabank_here:
+                used = db.execute("SELECT match_id FROM vabank_used WHERE player_id=?", (body.player_id,)).fetchone()
+                if used and used["match_id"] is not None and used["match_id"] != match_id:
+                    raise HTTPException(400, "У этого участника ва-банк уже стоит на другом матче")
+                db.execute("UPDATE predictions SET is_vabank=0 WHERE player_id=? AND match_id!=?",
+                          (body.player_id, match_id))
+            db.execute("INSERT OR REPLACE INTO vabank_used (player_id, match_id) VALUES (?,?)",
+                      (body.player_id, match_id))
+            is_vabank = 1
+        elif already_vabank_here:
+            db.execute("DELETE FROM vabank_used WHERE player_id=? AND match_id=?", (body.player_id, match_id))
+        # Если результат матча уже известен — считаем очки сразу
+        points = None
+        if match["status"] == "finished" and match["home_score"] is not None and match["away_score"] is not None:
+            points = calc_points(body.home_score, body.away_score, match["home_score"], match["away_score"], bool(is_vabank))
+        if existing:
+            db.execute("UPDATE predictions SET home_score=?,away_score=?,is_vabank=?,points=? WHERE id=?",
+                      (body.home_score, body.away_score, is_vabank, points, existing["id"]))
+        else:
+            db.execute("INSERT INTO predictions (player_id,match_id,home_score,away_score,is_vabank,points) VALUES (?,?,?,?,?,?)",
+                      (body.player_id, match_id, body.home_score, body.away_score, is_vabank, points))
+    if body.notify:
+        async def _broadcast_late_safe():
+            try:
+                await broadcast_late_correction(match_id, player["name"], body.home_score, body.away_score, bool(is_vabank), points)
+            except Exception as e:
+                print(f"TG error (late-prediction broadcast): {e}")
+        asyncio.create_task(_broadcast_late_safe())
+    return {"ok": True, "points": points}
+
+async def broadcast_late_correction(match_id, player_name, home_score, away_score, is_vabank, points):
+    """Уведомляет ВСЕХ участников о том, что администратор вручную скорректировал
+    прогноз (например, у игрока не было интернета и он не успел поставить сам)."""
+    with get_db() as db:
+        match = db.execute("SELECT * FROM matches WHERE id=?", (match_id,)).fetchone()
+        players = db.execute(
+            "SELECT telegram_chat_id FROM players WHERE (is_guest=0 OR is_guest IS NULL) AND telegram_chat_id IS NOT NULL"
+        ).fetchall()
+    if not match:
+        return
+    home = team_with_flag(match["home_team"])
+    away = team_with_flag(match["away_team"])
+    vb_txt = " 🔥<b>ВА-БАНК</b>" if is_vabank else ""
+    text = (
+        f"⚠️ <b>Корректировка прогноза</b>\n"
+        f"Причина: отсутствие интернета у пользователя.\n\n"
+        f"⚽ <b>{home} vs {away}</b>\n"
+        f"Прогноз участника {esc(player_name)}: <b>{home_score}:{away_score}</b>{vb_txt}"
+    )
+    if points is not None:
+        text += f"\nНачислено очков: <b>{points}</b>"
+    tasks = [send_telegram(str(p["telegram_chat_id"]), text) for p in players]
+    if tasks:
+        await asyncio.gather(*tasks)
+
 async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
     """Рассылает итоги матча всем участникам в Telegram."""
     with get_db() as db:

@@ -2510,6 +2510,7 @@ async function loadAdminMatches(){
       </div>
       <div style="display:flex;gap:6px;align-items:center">
         ${scoreBlock}
+        ${m.status!=='upcoming'?`<button class="btn btn-ghost btn-sm" onclick="openLatePrediction(${m.id})" style="padding:3px 7px;font-size:11px" title="Добавить прогноз опоздавшего участника">⏰</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick="editStage(${m.id})" style="padding:3px 7px;font-size:11px" title="Редактировать команды и стадию">📝</button>
         <button class="btn btn-red btn-sm" onclick="deleteMatch(${m.id})" style="padding:3px 7px;font-size:11px" title="Удалить">✕</button>
       </div>
@@ -2614,6 +2615,65 @@ async function saveStage(id,btn){
     document.querySelector('.modal-overlay')?.remove();
     toast('Матч обновлён ✅');loadAdminMatches();loadMatches();
   } else {btn.disabled=false;btn.textContent='💾 Сохранить';const e=await res.json().catch(()=>({}));toast(e.detail||'Ошибка','err');}
+}
+async function openLatePrediction(matchId){
+  const m=_adminMatches.find(x=>x.id===matchId);
+  if(!m)return;
+  let players;
+  try{
+    players=await fetch('/api/admin/players',{headers:{'x-admin-token':state.adminToken}}).then(r=>r.json());
+  }catch(e){toast('Не удалось загрузить список участников','err');return;}
+  if(!players.length){toast('Нет ни одного участника','err');return;}
+  const playerOpts=players.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';
+  modal.innerHTML=`<div class="modal" style="max-width:380px">
+    <div class="modal-body" style="padding:24px">
+      <h3 style="margin-bottom:6px;font-family:'Oswald',sans-serif">⏰ Прогноз опоздавшего</h3>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:16px">${escapeHtml(m.home_team)} vs ${escapeHtml(m.away_team)} — матч уже начался, добавляем прогноз вручную.</p>
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Участник</label>
+      <select id="late-player" style="width:100%;margin:6px 0 14px;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;font-size:14px">${playerOpts}</select>
+      <label style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Прогноз</label>
+      <div style="display:flex;align-items:center;gap:8px;margin:6px 0 14px">
+        <input type="number" id="late-home" min="0" max="99" placeholder="0" style="width:60px;padding:10px;text-align:center;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Oswald',sans-serif;font-size:16px;font-weight:700">
+        <span style="color:var(--muted);font-weight:700">:</span>
+        <input type="number" id="late-away" min="0" max="99" placeholder="0" style="width:60px;padding:10px;text-align:center;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Oswald',sans-serif;font-size:16px;font-weight:700">
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:10px">
+        <input type="checkbox" id="late-vabank">
+        <span>🔥 Это ва-банк (только если у участника ещё не использован)</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;margin-bottom:16px">
+        <input type="checkbox" id="late-notify" checked>
+        <span>Уведомить всех участников в Telegram о корректировке</span>
+      </label>
+      <div style="display:flex;gap:10px">
+        <button onclick="this.closest('.modal-overlay').remove()" style="flex:1;padding:11px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-family:'Manrope',sans-serif">Отмена</button>
+        <button onclick="saveLatePrediction(${matchId},this)" style="flex:1;padding:11px;border-radius:8px;border:none;background:var(--blue);color:#fff;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif">💾 Добавить</button>
+      </div>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+async function saveLatePrediction(matchId,btn){
+  const playerId=parseInt(document.getElementById('late-player').value);
+  const home=parseInt(document.getElementById('late-home').value);
+  const away=parseInt(document.getElementById('late-away').value);
+  const isVabank=document.getElementById('late-vabank').checked;
+  const notify=document.getElementById('late-notify').checked;
+  if(isNaN(home)||isNaN(away)||home<0||away<0){toast('Введи корректный счёт','err');return;}
+  btn.disabled=true;btn.textContent='⏳';
+  const res=await fetch(`/api/admin/matches/${matchId}/late-prediction`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify({player_id:playerId,home_score:home,away_score:away,is_vabank:isVabank,notify})});
+  if(res.ok){
+    const d=await res.json();
+    document.querySelector('.modal-overlay')?.remove();
+    toast(d.points!=null?`Прогноз добавлен, начислено очков: ${d.points} ✅`:'Прогноз добавлен ✅');
+    loadAdminMatches();loadVabankList();
+  } else {
+    btn.disabled=false;btn.textContent='💾 Добавить';
+    const e=await res.json().catch(()=>({}));toast(e.detail||'Ошибка','err');
+  }
 }
 
 
