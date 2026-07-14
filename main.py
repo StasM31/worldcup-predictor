@@ -1321,38 +1321,76 @@ def get_tournament_result_admin():
 
 @app.post("/api/admin/tournament-result", dependencies=[Depends(require_admin)])
 async def set_tournament_result(body: TournamentResultIn):
+    """Сохраняет известные итоги турнира поэтапно и пересчитывает бонусы."""
+    new_result = {
+        "champion": (body.champion or "").strip(),
+        "finalist1": (body.finalist1 or "").strip(),
+        "finalist2": (body.finalist2 or "").strip(),
+        "top_scorer": (body.top_scorer or "").strip(),  # фактически 3-е место
+    }
+
     with get_db() as db:
+        old_row = db.execute("SELECT * FROM tournament_result WHERE id=1").fetchone()
+        old_result = dict(old_row) if old_row else {
+            "champion": "", "finalist1": "", "finalist2": "", "top_scorer": ""
+        }
+
         db.execute("""INSERT INTO tournament_result (id,champion,finalist1,finalist2,top_scorer)
             VALUES (1,?,?,?,?)
             ON CONFLICT(id) DO UPDATE SET champion=excluded.champion,finalist1=excluded.finalist1,
               finalist2=excluded.finalist2,top_scorer=excluded.top_scorer""",
-            (body.champion,body.finalist1,body.finalist2,body.top_scorer))
-        preds = db.execute("SELECT * FROM tournament_predictions").fetchall()
-        for tp in preds:
-            c = 10 if tp["champion"] and tp["champion"].lower().strip()==body.champion.lower().strip() else 0
-            fins = {body.finalist1.lower().strip(),body.finalist2.lower().strip()}
-            f = 0
-            if tp["finalist1"] and tp["finalist1"].lower().strip() in fins: f+=5
-            if tp["finalist2"] and tp["finalist2"].lower().strip() in fins: f+=5
-            # top_scorer field now stores 3rd place prediction (+5 pts)
-            third_pts = 5 if tp["top_scorer"] and tp["top_scorer"].lower().strip()==body.top_scorer.lower().strip() else 0
-            db.execute("UPDATE tournament_predictions SET champion_pts=?,finalist_pts=?,scorer_pts=? WHERE player_id=?",
-                      (c,f,third_pts,tp["player_id"]))
-    async def _broadcast_safe():
-        try:
-            await broadcast_tournament_result(body.champion, body.finalist1, body.finalist2, body.top_scorer)
-        except Exception as e:
-            print(f"ERROR in broadcast_tournament_result: {e}")
-            import traceback; traceback.print_exc()
-    asyncio.create_task(_broadcast_safe())
-    return {"ok":True}
+            (new_result["champion"], new_result["finalist1"], new_result["finalist2"], new_result["top_scorer"]))
 
-async def broadcast_tournament_result(champion, finalist1, finalist2, top_scorer):
-    """Рассылает итоги турнира и бонусные очки всем участникам."""
+        preds = db.execute("SELECT * FROM tournament_predictions").fetchall()
+        finalist_results = {
+            value.lower() for value in (new_result["finalist1"], new_result["finalist2"]) if value
+        }
+        for tp in preds:
+            champion_pts = 10 if (
+                new_result["champion"] and tp["champion"] and
+                tp["champion"].strip().lower() == new_result["champion"].lower()
+            ) else 0
+
+            finalist_pts = 0
+            # Каждый из двух прогнозов финалиста оценивается отдельно. Пустые итоги не совпадают.
+            for predicted_finalist in (tp["finalist1"], tp["finalist2"]):
+                if predicted_finalist and predicted_finalist.strip().lower() in finalist_results:
+                    finalist_pts += 5
+
+            third_pts = 5 if (
+                new_result["top_scorer"] and tp["top_scorer"] and
+                tp["top_scorer"].strip().lower() == new_result["top_scorer"].lower()
+            ) else 0
+
+            db.execute(
+                "UPDATE tournament_predictions SET champion_pts=?,finalist_pts=?,scorer_pts=? WHERE player_id=?",
+                (champion_pts, finalist_pts, third_pts, tp["player_id"]),
+            )
+
+    changed = {
+        key: {"old": (old_result.get(key) or "").strip(), "new": value}
+        for key, value in new_result.items()
+        if (old_result.get(key) or "").strip() != value
+    }
+
+    # Пустое повторное сохранение не создаёт лишнюю рассылку.
+    if changed:
+        async def _broadcast_safe():
+            try:
+                await broadcast_tournament_result_changes(changed, new_result)
+            except Exception as e:
+                print(f"ERROR in broadcast_tournament_result_changes: {e}")
+                import traceback; traceback.print_exc()
+        asyncio.create_task(_broadcast_safe())
+
+    return {"ok": True, "changed": list(changed.keys())}
+
+
+async def broadcast_tournament_result_changes(changed, current_result):
+    """Рассылает только новые/изменённые итоги турнира и актуальную таблицу."""
     with get_db() as db:
         players = db.execute("""
             SELECT pl.name, pl.telegram_chat_id,
-                   tp.champion, tp.finalist1, tp.finalist2, tp.top_scorer,
                    tp.champion_pts, tp.finalist_pts, tp.scorer_pts
             FROM players pl
             LEFT JOIN tournament_predictions tp ON pl.id=tp.player_id
@@ -1368,44 +1406,106 @@ async def broadcast_tournament_result(champion, finalist1, finalist2, top_scorer
             GROUP BY pl.id ORDER BY total DESC, pl.name ASC
         """).fetchall()
 
-    champ_f = team_with_flag(champion)
-    fin1_f = team_with_flag(finalist1)
-    fin2_f = team_with_flag(finalist2)
-    third_f = team_with_flag(top_scorer) if top_scorer else '—'
-    medals = ['🥇','🥈','🥉']
+    labels = {
+        "champion": ("🏆", "Чемпион", 10),
+        "finalist1": ("🥈", "Первый финалист", 5),
+        "finalist2": ("🥈", "Второй финалист", 5),
+        "top_scorer": ("🥉", "3-е место", 5),
+    }
 
-    lines = [
-        "🏆 <b>Итоги турнира — бонусные очки!</b>",
-        "",
-        f"⚽ Чемпион: {champ_f}",
-        f"⚽ Финалисты: {fin1_f} / {fin2_f}",
-        f"⚽ 3-е место: {third_f}",
-        "",
-        "📊 <b>Бонусы участников:</b>",
-        "",
-    ]
+    nonempty_new = [(key, data) for key, data in changed.items() if data["new"]]
+    cleared = [(key, data) for key, data in changed.items() if not data["new"]]
+    corrected = [(key, data) for key, data in nonempty_new if data["old"]]
+    newly_set = [(key, data) for key, data in nonempty_new if not data["old"]]
 
+    # Заголовок зависит от того, что именно определилось.
+    if len(newly_set) == 1 and not corrected and not cleared:
+        key, data = newly_set[0]
+        if key == "finalist1":
+            title = "🥈 <b>Определился первый финалист ЧМ-2026!</b>"
+        elif key == "finalist2":
+            title = "🥈 <b>Определился второй финалист ЧМ-2026!</b>"
+        elif key == "champion":
+            title = "🏆 <b>Определился чемпион ЧМ-2026!</b>"
+        else:
+            title = "🥉 <b>Определилась команда, занявшая 3-е место!</b>"
+    elif corrected:
+        title = "✏️ <b>Итоги турнира обновлены</b>"
+    else:
+        title = "🏆 <b>Новые итоги турнира!</b>"
+
+    lines = [title, ""]
+
+    for key, data in nonempty_new:
+        icon, label, pts = labels[key]
+        team = team_with_flag(data["new"])
+        if data["old"]:
+            old_team = team_with_flag(data["old"])
+            lines.append(f"{icon} {label}: <s>{old_team}</s> → <b>{team}</b>")
+        else:
+            if key in ("finalist1", "finalist2"):
+                lines.append(f"{icon} <b>{team}</b> выходит в финал")
+            elif key == "champion":
+                lines.append(f"{icon} Чемпион мира: <b>{team}</b>")
+            else:
+                lines.append(f"{icon} 3-е место: <b>{team}</b>")
+        lines.append(f"🎯 За правильный прогноз: <b>+{pts} очков</b>")
+        lines.append("")
+
+    for key, data in cleared:
+        icon, label, _ = labels[key]
+        old_team = team_with_flag(data["old"]) if data["old"] else "—"
+        lines.append(f"{icon} {label} отменён: <s>{old_team}</s>")
+        lines.append("Бонусы пересчитаны.")
+        lines.append("")
+
+    # Показываем бонусы, полученные именно за категории, изменённые в этом сохранении.
+    changed_categories = set(changed.keys())
+    lines.append("📊 <b>Бонусы участников после обновления:</b>")
+    lines.append("")
+    any_bonus = False
     for pl in players:
-        total_bonus = (pl["champion_pts"] or 0) + (pl["finalist_pts"] or 0) + (pl["scorer_pts"] or 0)
-        details = []
-        if pl["champion_pts"]: details.append(f"чемпион +{pl['champion_pts']}")
-        if pl["finalist_pts"]: details.append(f"финалист +{pl['finalist_pts']}")
-        if pl["scorer_pts"]: details.append(f"3-е место +{pl['scorer_pts']}")
-        detail_str = f" ({', '.join(details)})" if details else ""
-        lines.append(f"• {esc(pl['name'])} — <b>{total_bonus}⭐</b>{detail_str}")
+        delta_parts = []
+        if "champion" in changed_categories and pl["champion_pts"]:
+            delta_parts.append(f"чемпион +{pl['champion_pts']}")
+        if ({"finalist1", "finalist2"} & changed_categories) and pl["finalist_pts"]:
+            delta_parts.append(f"финалисты +{pl['finalist_pts']}")
+        if "top_scorer" in changed_categories and pl["scorer_pts"]:
+            delta_parts.append(f"3-е место +{pl['scorer_pts']}")
+        if delta_parts:
+            any_bonus = True
+            lines.append(f"• {esc(pl['name'])} — <b>{', '.join(delta_parts)}</b>")
+
+    if not any_bonus:
+        lines.append("Никто не угадал этот результат.")
 
     lines.append("")
-    lines.append("🏆 <b>Итоговая таблица лидеров:</b>")
+    lines.append("🏆 <b>Текущая таблица лидеров:</b>")
     lines.append("")
+    medals = ["🥇", "🥈", "🥉"]
     for i, r in enumerate(standings):
         medal = medals[i] if i < 3 else f"{i+1}."
         lines.append(f"{medal} {esc(r['name'])} — <b>{r['total']} очк.</b>")
 
+    pending = []
+    if not current_result.get("finalist1") or not current_result.get("finalist2"):
+        pending.append("финалисты")
+    if not current_result.get("champion"):
+        pending.append("чемпион")
+    if not current_result.get("top_scorer"):
+        pending.append("3-е место")
+    if pending:
+        lines.append("")
+        lines.append(f"⏳ Ещё не определены: {', '.join(pending)}.")
+
     text = "\n".join(lines)
-    tasks = [send_telegram(str(pl["telegram_chat_id"]), text) for pl in players if pl["telegram_chat_id"]]
+    tasks = [
+        send_telegram(str(pl["telegram_chat_id"]), text)
+        for pl in players if pl["telegram_chat_id"]
+    ]
     if tasks:
         await asyncio.gather(*tasks)
-    print("Tournament result broadcast sent!")
+    print("Tournament result update broadcast sent!")
 
 @app.get("/api/tournament-settings")
 def get_tournament_settings(token: str):

@@ -2449,9 +2449,9 @@ async function loadTournamentResultAdmin(){
 
 async function setTournamentResult(){
   const body={champion:document.getElementById('tr-champion').value,finalist1:document.getElementById('tr-fin1').value,finalist2:document.getElementById('tr-fin2').value,top_scorer:document.getElementById('tr-third').value};
-  if(!body.champion){toast('Выберите чемпиона','err');return;}
+  if(!body.champion&&!body.finalist1&&!body.finalist2&&!body.top_scorer){toast('Укажите хотя бы один известный итог','err');return;}
   const res=await fetch('/api/admin/tournament-result',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify(body)});
-  if(res.ok)toast('Итоги сохранены! Бонусы начислены 🏆');else toast('Ошибка','err');
+  if(res.ok){const d=await res.json();toast(d.changed?.length?'Итоги сохранены! Бонусы пересчитаны 🏆':'Изменений нет','ok');}else toast('Ошибка','err');
   loadAdmin();
 }
 async function loadAdminMatches(){
