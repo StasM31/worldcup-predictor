@@ -952,6 +952,7 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
           <button class="btn btn-ghost" onclick="sendBackup()">🗄 Сохранить бэкап сейчас</button>
           <button class="btn btn-gold" onclick="sendTournReminder()">📣 Напомнить про ставку на финал</button>
           <button class="btn btn-ghost" onclick="showCustomBroadcast()" style="border-color:var(--blue);color:var(--blue)">✉️ Написать всем участникам</button>
+          <button class="btn btn-gold" onclick="showCorrectedStandingsPreview()">🔄 Отправить исправленную таблицу</button>
         </div>
         <p class="hint" style="margin-top:10px">🗄 Бэкап базы данных автоматически отправляется тебе в Telegram каждую ночь в <strong>03:00 МСК</strong>.<br><br>
         Чтобы настроить бэкап, сделай один раз:<br>
@@ -2324,6 +2325,42 @@ function showCustomBroadcast(){
   </div>`;
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
+}
+
+async function showCorrectedStandingsPreview(){
+  try{
+    const res=await fetch('/api/admin/corrected-standings-preview',{headers:{'x-admin-token':state.adminToken}});
+    if(!res.ok){toast('Не удалось сформировать сообщение','err');return;}
+    const d=await res.json();
+    const modal=document.createElement('div');
+    modal.className='modal-overlay';
+    modal.innerHTML=`<div class="modal" style="max-width:520px">
+      <div class="modal-body" style="padding:24px">
+        <h3 style="margin-bottom:8px;font-family:'Oswald',sans-serif">🔄 Исправленная таблица</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Получателей: <b>${d.recipients}</b>. Проверь текст перед отправкой.</p>
+        <div style="white-space:pre-wrap;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);font-size:13px;line-height:1.55;max-height:55vh;overflow:auto">${escapeHtml(d.text.replace(/<\/?b>/g,''))}</div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button onclick="this.closest('.modal-overlay').remove()" class="btn btn-ghost" style="flex:1">Отмена</button>
+          <button onclick="sendCorrectedStandings(this)" class="btn btn-gold" style="flex:1">📤 Отправить всем</button>
+        </div>
+      </div>
+    </div>`;
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+    document.body.appendChild(modal);
+  }catch(e){toast('Ошибка сети','err');}
+}
+
+async function sendCorrectedStandings(btn){
+  if(!confirm('Отправить исправленную таблицу всем участникам с подключённым Telegram?'))return;
+  btn.disabled=true;btn.textContent='⏳ Отправляем...';
+  try{
+    const res=await fetch('/api/admin/send-corrected-standings',{method:'POST',headers:{'x-admin-token':state.adminToken}});
+    if(res.ok){
+      const d=await res.json();
+      document.querySelector('.modal-overlay')?.remove();
+      toast(`🔄 Исправленная таблица отправлена: ${d.sent} чел.`,'ok');
+    }else{toast('Ошибка отправки','err');btn.disabled=false;btn.textContent='📤 Отправить всем';}
+  }catch(e){toast('Ошибка сети','err');btn.disabled=false;btn.textContent='📤 Отправить всем';}
 }
 
 async function sendCustomBroadcast(btn){

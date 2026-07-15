@@ -772,6 +772,60 @@ async def manual_welcome():
 async def manual_backup():
     await send_backup(); return {"ok":True}
 
+def build_corrected_standings_message():
+    """Формирует корректирующее сообщение с актуальной таблицей и всеми бонусами."""
+    with get_db() as db:
+        standings = db.execute("""
+            SELECT pl.id, pl.name, pl.telegram_chat_id,
+                   COALESCE(SUM(p.points), 0) AS match_points,
+                   COALESCE(tp.champion_pts, 0) AS champion_pts,
+                   COALESCE(tp.finalist_pts, 0) AS finalist_pts,
+                   COALESCE(tp.scorer_pts, 0) AS scorer_pts,
+                   COALESCE(SUM(p.points), 0)
+                     + COALESCE(tp.champion_pts, 0)
+                     + COALESCE(tp.finalist_pts, 0)
+                     + COALESCE(tp.scorer_pts, 0) AS total
+            FROM players pl
+            LEFT JOIN predictions p ON p.player_id = pl.id
+            LEFT JOIN tournament_predictions tp ON tp.player_id = pl.id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
+            GROUP BY pl.id
+            ORDER BY total DESC, pl.name ASC
+        """).fetchall()
+
+    lines = [
+        "🔄 <b>Обновление таблицы турнира</b>",
+        "",
+        "В предыдущем сообщении после матча в общей таблице не были учтены бонусные очки за угаданного финалиста.",
+        "",
+        "✅ Очки за сам матч были рассчитаны правильно. Исправляем только общую таблицу.",
+        "",
+        "🏆 <b>Актуальная таблица с учётом всех бонусов:</b>",
+        "",
+    ]
+    medals = ["🥇", "🥈", "🥉"]
+    for i, row in enumerate(standings):
+        place = medals[i] if i < 3 else f"{i + 1}."
+        lines.append(f"{place} {esc(row['name'])} — <b>{row['total']} очк.</b>")
+
+    lines.extend(["", "Исправляем небольшую неточность в предыдущем сообщении 🙂"] )
+    return "\n".join(lines), standings
+
+@app.get("/api/admin/corrected-standings-preview", dependencies=[Depends(require_admin)])
+def corrected_standings_preview():
+    text, standings = build_corrected_standings_message()
+    recipients = sum(1 for row in standings if row["telegram_chat_id"])
+    return {"ok": True, "text": text, "recipients": recipients}
+
+@app.post("/api/admin/send-corrected-standings", dependencies=[Depends(require_admin)])
+async def send_corrected_standings():
+    text, standings = build_corrected_standings_message()
+    recipients = [row for row in standings if row["telegram_chat_id"]]
+    tasks = [send_telegram(str(row["telegram_chat_id"]), text) for row in recipients]
+    if tasks:
+        await asyncio.gather(*tasks)
+    return {"ok": True, "sent": len(recipients)}
+
 @app.post("/api/admin/send-custom", dependencies=[Depends(require_admin)])
 async def send_custom_broadcast(body: dict):
     text = body.get("text","")
