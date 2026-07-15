@@ -1249,7 +1249,12 @@ async def broadcast_match_result(match_id: int, real_home: int, real_away: int):
         # Общий рейтинг после матча
         standings = db.execute("""
             SELECT pl.name,
-                   COALESCE(SUM(p.points),0) as total
+                   COALESCE(SUM(p.points),0)
+                   + COALESCE((
+                       SELECT champion_pts + finalist_pts + scorer_pts
+                       FROM tournament_predictions tp
+                       WHERE tp.player_id = pl.id
+                   ), 0) AS total
             FROM players pl
             LEFT JOIN predictions p ON pl.id=p.player_id
             WHERE pl.is_guest=0 OR pl.is_guest IS NULL
