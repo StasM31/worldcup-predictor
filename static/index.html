@@ -578,6 +578,44 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
   .team-name{font-size:16px;}
   .tourn-grid{grid-template-columns:1fr;}
 }
+
+/* ── ГРАФИК ХОДА ТУРНИРА ── */
+.progress-card{margin-top:18px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+.progress-head{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.progress-title{font-family:'Oswald',sans-serif;font-size:20px;font-weight:700;color:var(--navy)}
+.progress-controls{display:flex;gap:6px;background:var(--surface2);padding:4px;border-radius:10px}
+.progress-mode{border:0;background:transparent;color:var(--muted);padding:7px 11px;border-radius:8px;font-weight:700;cursor:pointer}
+.progress-mode.active{background:var(--navy);color:#fff}
+.progress-scroll{overflow-x:auto;overflow-y:hidden;border:1px solid var(--border);border-radius:12px;background:var(--surface2)}
+#progress-chart{display:block;min-width:920px;width:100%;height:440px}
+.progress-legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.progress-player{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface2);padding:6px 9px;border-radius:999px;cursor:pointer;font-size:12px;font-weight:700;color:var(--text2)}
+.progress-player.off{opacity:.35;text-decoration:line-through}
+.progress-dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.progress-note{font-size:11px;color:var(--muted);margin-top:9px;line-height:1.4}
+.progress-tooltip{position:fixed;z-index:9999;pointer-events:none;background:#0a1628;color:#fff;padding:8px 10px;border-radius:8px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:none;max-width:260px}
+body.dark-theme .progress-card{background:var(--surface);border-color:var(--border)}
+@media(max-width:700px){
+  .progress-card{padding:12px;margin-left:-2px;margin-right:-2px;border-radius:14px}
+  .progress-head{align-items:stretch;gap:9px}
+  .progress-head>div:first-child{width:100%}
+  .progress-title{font-size:18px}
+  .progress-controls{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .progress-mode{min-height:44px;font-size:13px;padding:10px 12px;touch-action:manipulation}
+  .progress-scroll{max-width:100%;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:thin;touch-action:pan-x}
+  #progress-chart{height:360px;min-width:760px}
+  .progress-legend{gap:8px;flex-wrap:nowrap;overflow-x:auto;padding:2px 1px 8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .progress-player{min-height:40px;flex:0 0 auto;padding:8px 11px;font-size:12px;touch-action:manipulation}
+  .progress-dot{width:10px;height:10px}
+  .progress-note{font-size:12px;line-height:1.5}
+  .progress-tooltip{position:fixed;left:12px!important;right:12px;top:auto!important;bottom:18px;max-width:none;text-align:center;font-size:13px;padding:10px 12px}
+}
+@media(max-width:380px){
+  main{padding:9px}
+  #progress-chart{height:330px;min-width:720px}
+  .progress-card{padding:10px}
+}
+
 </style>
 </head>
 <body>
@@ -1898,6 +1936,84 @@ async function loadRules(){
     if(sub) sub.textContent = 'Турнир прогнозов · ЧМ 2026';
   }
 }
+
+let _progressData=null;
+let _progressMode='rank';
+let _progressHidden=new Set();
+const _progressColors=['#2563eb','#dc2626','#16a34a','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#9333ea','#ea580c','#475569','#0f766e'];
+
+async function loadTournamentProgress(){
+  const loading=document.getElementById('progress-loading');
+  try{
+    _progressData=await api('/api/tournament-progress');
+    if(!_progressData.checkpoints.length){
+      if(loading) loading.innerHTML='<div class="ico">📈</div>График появится после первого завершённого матча';
+      return;
+    }
+    if(loading) loading.style.display='none';
+    const wrap=document.getElementById('progress-wrap'); if(wrap) wrap.style.display='block';
+    renderProgressLegend(); renderTournamentProgress();
+  }catch(e){ if(loading) loading.textContent='Не удалось загрузить историю турнира'; }
+}
+function setProgressMode(mode){
+  _progressMode=mode;
+  document.querySelectorAll('.progress-mode').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
+  renderTournamentProgress();
+}
+function toggleProgressPlayer(id){
+  if(_progressHidden.has(id)) _progressHidden.delete(id); else _progressHidden.add(id);
+  renderProgressLegend(); renderTournamentProgress();
+}
+function renderProgressLegend(){
+  const el=document.getElementById('progress-legend'); if(!el||!_progressData)return;
+  el.innerHTML=_progressData.players.map((p,i)=>`<button class="progress-player ${_progressHidden.has(p.id)?'off':''}" onclick="toggleProgressPlayer(${p.id})"><span class="progress-dot" style="background:${_progressColors[i%_progressColors.length]}"></span>${escapeHtml(p.name)}${p.bonus?` <span style="color:var(--gold)">+${p.bonus}⭐</span>`:''}</button>`).join('');
+}
+function renderTournamentProgress(){
+  const svg=document.getElementById('progress-chart'); if(!svg||!_progressData)return;
+  const data=_progressData, n=data.checkpoints.length;
+  const width=Math.max(920,n*22+100), height=440, pad={l:48,r:22,t:28,b:64};
+  const plotW=width-pad.l-pad.r, plotH=height-pad.t-pad.b;
+  svg.setAttribute('viewBox',`0 0 ${width} ${height}`); svg.style.width=width+'px';
+  const vals=data.players.flatMap(p=>p.values.map(v=>_progressMode==='rank'?v.rank:v.points));
+  const minV=_progressMode==='rank'?1:0;
+  const maxV=_progressMode==='rank'?Math.max(...vals,1):Math.max(...vals,1);
+  const x=i=>pad.l+(n===1?plotW/2:i*plotW/(n-1));
+  const y=v=>_progressMode==='rank' ? pad.t+(v-1)*plotH/Math.max(1,maxV-1) : pad.t+plotH-(v-minV)*plotH/Math.max(1,maxV-minV);
+  let out='';
+  const ticks=_progressMode==='rank' ? Array.from({length:maxV},(_,i)=>i+1) : Array.from({length:6},(_,i)=>Math.round(maxV*i/5));
+  ticks.forEach(t=>{const yy=y(t);out+=`<line x1="${pad.l}" y1="${yy}" x2="${width-pad.r}" y2="${yy}" stroke="var(--border)" stroke-width="1"/><text x="${pad.l-9}" y="${yy+4}" text-anchor="end" font-size="11" fill="var(--muted)">${_progressMode==='rank'?t:t}</text>`});
+  const step=Math.max(1,Math.ceil(n/12));
+  data.checkpoints.forEach((c,i)=>{if(i%step===0||i===n-1){out+=`<text x="${x(i)}" y="${height-34}" text-anchor="end" transform="rotate(-35 ${x(i)} ${height-34})" font-size="10" fill="var(--muted)">${escapeHtml(c.label.length>24?c.label.slice(0,22)+'…':c.label)}</text>`}if(c.is_bonus)out+=`<line x1="${x(i)}" y1="${pad.t}" x2="${x(i)}" y2="${pad.t+plotH}" stroke="var(--gold2)" stroke-dasharray="5 4"/>`});
+  data.players.forEach((p,pi)=>{
+    if(_progressHidden.has(p.id))return;
+    const color=_progressColors[pi%_progressColors.length];
+    const pts=p.values.map(v=>`${x(v.x)},${y(_progressMode==='rank'?v.rank:v.points)}`).join(' ');
+    out+=`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${p.name===state.player?.name?4:2.4}" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>`;
+    p.values.forEach((v,vi)=>{const value=_progressMode==='rank'?v.rank:v.points;out+=`<circle cx="${x(v.x)}" cy="${y(value)}" r="${vi===p.values.length-1?4:2.5}" fill="${color}" stroke="var(--surface)" stroke-width="1.5" data-player="${escapeHtml(p.name)}" data-label="${escapeHtml(data.checkpoints[vi].label)}" data-value="${value}"/>`});
+  });
+  out+=`<text x="15" y="${pad.t+plotH/2}" transform="rotate(-90 15 ${pad.t+plotH/2})" text-anchor="middle" font-size="11" fill="var(--muted)">${_progressMode==='rank'?'Место в таблице':'Набранные очки'}</text>`;
+  svg.innerHTML=out;
+  const tip=document.getElementById('progress-tooltip');
+  const showTip=(c,e)=>{
+    tip.innerHTML=`<b>${c.dataset.player}</b><br>${c.dataset.label}<br>${_progressMode==='rank'?'Место':'Очки'}: <b>${c.dataset.value}</b>`;
+    tip.style.display='block';
+    if(e && e.pointerType!=='touch'){
+      tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY+12)+'px';tip.style.right='auto';tip.style.bottom='auto';
+    }
+  };
+  svg.querySelectorAll('circle[data-player]').forEach(c=>{
+    c.style.cursor='pointer';
+    c.style.pointerEvents='all';
+    c.addEventListener('pointerenter',e=>showTip(c,e));
+    c.addEventListener('pointermove',e=>{if(e.pointerType!=='touch'){tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY+12)+'px'}});
+    c.addEventListener('pointerleave',e=>{if(e.pointerType!=='touch')tip.style.display='none'});
+    c.addEventListener('pointerup',e=>{if(e.pointerType==='touch'){e.preventDefault();showTip(c,e)}});
+  });
+  document.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='touch' && !e.target.closest('#progress-chart')) tip.style.display='none';
+  },{once:true});
+}
+
 async function loadLeaderboard(){
   try{
     const rows=await api('/api/leaderboard');
@@ -1915,7 +2031,24 @@ async function loadLeaderboard(){
           <div class="lb-pct" style="color:${r.hit_pct>=50?'var(--green)':'var(--muted)'}">${r.hit_pct}%</div>
           <div class="lb-bonus">${r.tournament_bonus>0?`+${r.tournament_bonus}⭐`:'-'}</div>
         </div>`).join('')}
-      </div>`;
+      </div>
+      <div class="progress-card">
+        <div class="progress-head">
+          <div><div class="progress-title">📈 Ход турнира</div><div style="font-size:12px;color:var(--muted)">Положение участников после каждого завершённого матча</div></div>
+          <div class="progress-controls">
+            <button class="progress-mode active" data-mode="rank" onclick="setProgressMode('rank')">Место</button>
+            <button class="progress-mode" data-mode="points" onclick="setProgressMode('points')">Очки</button>
+          </div>
+        </div>
+        <div id="progress-loading" class="empty" style="padding:30px">Строим историю турнира…</div>
+        <div id="progress-wrap" style="display:none">
+          <div class="progress-scroll"><svg id="progress-chart" role="img" aria-label="График хода турнира"></svg></div>
+          <div id="progress-legend" class="progress-legend"></div>
+          <div class="progress-note">Нажмите на имя, чтобы скрыть или вернуть линию. Турнирные бонусы показаны отдельной последней точкой «Итог + бонусы».</div>
+        </div>
+      </div>
+      <div id="progress-tooltip" class="progress-tooltip"></div>`;
+    loadTournamentProgress();
   }catch(e){toast(e.message,'err');}
 }
 

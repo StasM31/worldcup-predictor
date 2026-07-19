@@ -983,6 +983,82 @@ def leaderboard(token: str):
             GROUP BY pl.id ORDER BY total_points DESC, pl.name ASC""").fetchall()
     return [dict(r) for r in rows]
 
+@app.get("/api/tournament-progress")
+def tournament_progress(token: str):
+    """История мест и очков после каждого завершённого матча.
+
+    Матчевые очки добавляются в момент соответствующего матча. Текущие
+    турнирные бонусы показываются отдельной финальной точкой, поскольку в
+    старой базе нет журнала времени их начисления.
+    """
+    get_player_by_token(token)
+    with get_db() as db:
+        players = db.execute("""
+            SELECT id, name
+            FROM players
+            WHERE is_guest=0 OR is_guest IS NULL
+            ORDER BY name
+        """).fetchall()
+        matches = db.execute("""
+            SELECT id, home_team, away_team, match_time
+            FROM matches
+            WHERE status='finished' AND home_score IS NOT NULL AND away_score IS NOT NULL
+            ORDER BY match_time ASC, id ASC
+        """).fetchall()
+        pred_rows = db.execute("""
+            SELECT p.player_id, p.match_id, COALESCE(p.points,0) AS points
+            FROM predictions p
+            JOIN matches m ON m.id=p.match_id
+            WHERE m.status='finished'
+        """).fetchall()
+        bonus_rows = db.execute("""
+            SELECT pl.id AS player_id,
+                   COALESCE(tp.champion_pts,0)+COALESCE(tp.finalist_pts,0)+COALESCE(tp.scorer_pts,0) AS bonus
+            FROM players pl
+            LEFT JOIN tournament_predictions tp ON tp.player_id=pl.id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
+        """).fetchall()
+
+    by_match = {}
+    for r in pred_rows:
+        by_match[(r["player_id"], r["match_id"])] = int(r["points"] or 0)
+    bonuses = {r["player_id"]: int(r["bonus"] or 0) for r in bonus_rows}
+    totals = {p["id"]: 0 for p in players}
+    exacts = {p["id"]: 0 for p in players}
+    outcomes = {p["id"]: 0 for p in players}
+    series = {p["id"]: [] for p in players}
+    checkpoints = []
+
+    def snapshot(label, match_id=None, is_bonus=False):
+        ordered = sorted(players, key=lambda p: (-totals[p["id"]], -exacts[p["id"]], -outcomes[p["id"]], p["name"].lower()))
+        ranks = {p["id"]: i + 1 for i, p in enumerate(ordered)}
+        idx = len(checkpoints)
+        checkpoints.append({"index": idx, "label": label, "match_id": match_id, "is_bonus": is_bonus})
+        for p in players:
+            pid = p["id"]
+            series[pid].append({"x": idx, "points": totals[pid], "rank": ranks[pid]})
+
+    for i, m in enumerate(matches, 1):
+        for p in players:
+            pts = by_match.get((p["id"], m["id"]), 0)
+            totals[p["id"]] += pts
+            if pts >= 3: exacts[p["id"]] += 1
+            if pts > 0: outcomes[p["id"]] += 1
+        snapshot(f"{i}. {m['home_team']} — {m['away_team']}", m["id"])
+
+    if matches and any(bonuses.values()):
+        for p in players:
+            totals[p["id"]] += bonuses.get(p["id"], 0)
+        snapshot("Итог + бонусы", None, True)
+
+    return {
+        "checkpoints": checkpoints,
+        "players": [
+            {"id": p["id"], "name": p["name"], "bonus": bonuses.get(p["id"], 0), "values": series[p["id"]]}
+            for p in players
+        ]
+    }
+
 @app.get("/api/archive")
 def archive(token: str):
     get_player_by_token(token)
