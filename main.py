@@ -97,6 +97,11 @@ def init_db():
             prize_config TEXT DEFAULT '60,30,10',
             hide_days INTEGER DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS final_broadcast_log (
+            id INTEGER PRIMARY KEY CHECK (id=1),
+            sent_at TEXT,
+            champion TEXT
+        );
         INSERT OR IGNORE INTO tournament_settings (id) VALUES (1);
         """)
         try:
@@ -1433,16 +1438,19 @@ async def set_tournament_result(body: TournamentResultIn):
     }
 
     # Пустое повторное сохранение не создаёт лишнюю рассылку.
-    if changed:
+    # Чемпиона объявляем отдельной праздничной финальной серией из админки,
+    # чтобы не отправлять сначала обычное техническое сообщение, а затем финальное.
+    changed_for_auto = {k:v for k,v in changed.items() if k != "champion"}
+    if changed_for_auto:
         async def _broadcast_safe():
             try:
-                await broadcast_tournament_result_changes(changed, new_result)
+                await broadcast_tournament_result_changes(changed_for_auto, new_result)
             except Exception as e:
                 print(f"ERROR in broadcast_tournament_result_changes: {e}")
                 import traceback; traceback.print_exc()
         asyncio.create_task(_broadcast_safe())
 
-    return {"ok": True, "changed": list(changed.keys())}
+    return {"ok": True, "changed": list(changed.keys()), "final_broadcast_ready": bool(new_result["champion"])}
 
 
 async def broadcast_tournament_result_changes(changed, current_result):
@@ -1565,6 +1573,152 @@ async def broadcast_tournament_result_changes(changed, current_result):
     if tasks:
         await asyncio.gather(*tasks)
     print("Tournament result update broadcast sent!")
+
+
+
+def _outcome(h, a):
+    return 1 if h > a else -1 if h < a else 0
+
+
+def build_final_broadcast_messages(enabled=None, personal_message=""):
+    """Строит праздничную финальную серию и статистические номинации."""
+    enabled = set(enabled or ["exact", "outcomes", "unique", "popular", "mystery", "vabank", "photo_finish"])
+    with get_db() as db:
+        result = db.execute("SELECT * FROM tournament_result WHERE id=1").fetchone()
+        if not result or not result["champion"]:
+            raise HTTPException(400, "Сначала укажите чемпиона турнира")
+        players = db.execute("""
+            SELECT pl.id, pl.name, pl.telegram_chat_id,
+                   COALESCE(SUM(p.points),0) AS match_points,
+                   COALESCE(tp.champion_pts,0) AS champion_pts,
+                   COALESCE(tp.finalist_pts,0) AS finalist_pts,
+                   COALESCE(tp.scorer_pts,0) AS scorer_pts,
+                   COALESCE(SUM(p.points),0)+COALESCE(tp.champion_pts,0)+COALESCE(tp.finalist_pts,0)+COALESCE(tp.scorer_pts,0) AS total
+            FROM players pl
+            LEFT JOIN predictions p ON p.player_id=pl.id
+            LEFT JOIN tournament_predictions tp ON tp.player_id=pl.id
+            WHERE pl.is_guest=0 OR pl.is_guest IS NULL
+            GROUP BY pl.id ORDER BY total DESC, pl.name ASC
+        """).fetchall()
+        matches = db.execute("SELECT * FROM matches WHERE status='finished' ORDER BY match_time ASC").fetchall()
+        preds = db.execute("""
+            SELECT p.*, pl.name, m.home_team, m.away_team, m.home_score AS real_home, m.away_score AS real_away,
+                   m.stage, m.match_time
+            FROM predictions p JOIN players pl ON pl.id=p.player_id JOIN matches m ON m.id=p.match_id
+            WHERE (pl.is_guest=0 OR pl.is_guest IS NULL) AND m.status='finished'
+        """).fetchall()
+        champ_guesses = db.execute("""
+            SELECT pl.name FROM tournament_predictions tp JOIN players pl ON pl.id=tp.player_id
+            WHERE lower(trim(tp.champion))=lower(trim(?)) AND (pl.is_guest=0 OR pl.is_guest IS NULL)
+            ORDER BY pl.name
+        """, (result["champion"],)).fetchall()
+
+    final = None
+    for m in reversed(matches):
+        st=(m["stage"] or "").lower()
+        if "финал" in st and "3" not in st and "треть" not in st:
+            final=m; break
+    if not final and matches: final=matches[-1]
+    pred_by_match={}
+    exact_counts={}
+    outcome_counts={}
+    exact_by_player={p["id"]:0 for p in players}
+    outcome_by_player={p["id"]:0 for p in players}
+    vb_best=None
+    for pr in preds:
+        pred_by_match.setdefault(pr["match_id"],[]).append(pr)
+        exact = pr["home_score"]==pr["real_home"] and pr["away_score"]==pr["real_away"]
+        good_out = _outcome(pr["home_score"],pr["away_score"])==_outcome(pr["real_home"],pr["real_away"])
+        if exact: exact_by_player[pr["player_id"]]=exact_by_player.get(pr["player_id"],0)+1
+        if good_out: outcome_by_player[pr["player_id"]]=outcome_by_player.get(pr["player_id"],0)+1
+        if pr["is_vabank"] and (vb_best is None or (pr["points"] or 0) > (vb_best["points"] or 0)): vb_best=pr
+    for m in matches:
+        arr=pred_by_match.get(m["id"],[])
+        exact=[x for x in arr if x["home_score"]==m["home_score"] and x["away_score"]==m["away_score"]]
+        good=[x for x in arr if _outcome(x["home_score"],x["away_score"])==_outcome(m["home_score"],m["away_score"])]
+        exact_counts[m["id"]]=(m,exact,good,arr)
+
+    lines1=["🏁 <b>ФИНАЛ ЗАВЕРШЁН!</b>",""]
+    if final:
+        lines1.append(f"⚽ {team_with_flag(final['home_team'])} <b>{final['home_score']}:{final['away_score']}</b> {team_with_flag(final['away_team'])}")
+        lines1.append("")
+    lines1.append(f"🏆 <b>{team_with_flag(result['champion'])} — чемпион мира!</b>")
+    if final:
+        lines1.extend(["", "📊 <b>Прогнозы на финал:</b>",""])
+        farr=pred_by_match.get(final["id"],[])
+        fmap={x["player_id"]:x for x in farr}
+        for pl in players:
+            pr=fmap.get(pl["id"])
+            if pr: lines1.append(f"• {esc(pl['name'])}: {pr['home_score']}:{pr['away_score']} → <b>+{pr['points'] or 0} очк.</b>")
+            else: lines1.append(f"• {esc(pl['name'])}: нет прогноза → <b>0 очк.</b>")
+    lines1.extend(["", "Это был последний матч. Главный итог нашего турнира — следом… 👀"])
+
+    winner=players[0] if players else None
+    lines2=["🏆🏆🏆 <b>НАШ ТУРНИР ЗАВЕРШЁН!</b> 🏆🏆🏆", "", "Все бонусы начислены, результаты окончательно подсчитаны.",""]
+    if champ_guesses:
+        lines2.append("🎯 <b>Бонус за прогноз чемпиона мира — +10 очков:</b>")
+        lines2.extend([f"• {esc(x['name'])} — <b>+10</b>" for x in champ_guesses])
+    else: lines2.append("🎯 Чемпиона мира не угадал никто.")
+    if winner:
+        lines2.extend(["",f"🥇 <b>ПОБЕДИТЕЛЬ ТУРНИРА ПРОГНОЗОВ — {esc(winner['name']).upper()}!</b>","",f"Победитель набрал <b>{winner['total']} очк.</b> и становится главным футбольным оракулом турнира! 🔮⚽"])
+    lines2.extend(["","🏆 <b>Итоговая таблица:</b>",""])
+    medals=["🥇","🥈","🥉"]
+    for i,pl in enumerate(players): lines2.append(f"{medals[i] if i<3 else str(i+1)+'.'} {esc(pl['name'])} — <b>{pl['total']} очк.</b>")
+    if len(players)>1 and "photo_finish" in enabled:
+        gap=players[0]["total"]-players[1]["total"]
+        lines2.extend(["",f"🔥 Первое и второе места разделили всего <b>{gap} очк.</b>!"])
+    if personal_message.strip(): lines2.extend(["",esc(personal_message.strip())])
+    lines2.extend(["","Поздравляем победителя и призёров! 👏"])
+
+    nom=["🎬 <b>А теперь — немного истории нашего турнира!</b>",""]
+    if "exact" in enabled and players:
+        mx=max(exact_by_player.values() or [0]); names=[esc(x["name"]) for x in players if exact_by_player.get(x["id"],0)==mx]
+        nom.extend(["🔮 <b>Главный оракул</b>",f"{' и '.join(names)} {'угадал' if len(names)==1 else 'угадали'} больше всех точных счетов — <b>{mx}</b>.",""])
+    if "outcomes" in enabled and players:
+        mx=max(outcome_by_player.values() or [0]); names=[esc(x["name"]) for x in players if outcome_by_player.get(x["id"],0)==mx]
+        nom.extend(["✅ <b>Мистер стабильность</b>",f"{' и '.join(names)} чаще всех правильно {'определял' if len(names)==1 else 'определяли'} исход — <b>{mx}</b> раз.",""])
+    unique=None
+    for m,exact,good,arr in exact_counts.values():
+        if len(exact)==1 and len(good)==1: unique=(m,exact[0]); break
+    if "unique" in enabled and unique:
+        m,pr=unique; nom.extend(["🦸 <b>Один против всех</b>",f"{team_with_flag(m['home_team'])} — {team_with_flag(m['away_team'])} <b>{m['home_score']}:{m['away_score']}</b>: только {esc(pr['name'])} угадал точный счёт, а остальные не угадали даже исход!",""])
+    popular=max(exact_counts.values(), key=lambda x:len(x[1]), default=None)
+    if "popular" in enabled and popular and len(popular[1])>1:
+        m,exact,_,_=popular; nom.extend(["👥 <b>Самый угадываемый матч</b>",f"{team_with_flag(m['home_team'])} — {team_with_flag(m['away_team'])} <b>{m['home_score']}:{m['away_score']}</b> угадали сразу <b>{len(exact)} участников</b>.",""])
+    mystery=next((x for x in exact_counts.values() if len(x[2])==0 and len(x[3])>0),None)
+    if "mystery" in enabled and mystery:
+        m,_,_,_=mystery; nom.extend(["🌪 <b>Главная загадка чемпионата</b>",f"В матче {team_with_flag(m['home_team'])} — {team_with_flag(m['away_team'])} никто не угадал даже исход.",""])
+    if "vabank" in enabled and vb_best:
+        nom.extend(["🔥 <b>Лучший ва-банк</b>",f"{esc(vb_best['name'])} заработал <b>{vb_best['points']} очк.</b> на матче {team_with_flag(vb_best['home_team'])} — {team_with_flag(vb_best['away_team'])}.",""])
+    total_preds=len(preds); total_exact=sum(exact_by_player.values()); total_points=sum((p["points"] or 0) for p in preds); total_vb=sum(1 for p in preds if p["is_vabank"])
+    nom.extend(["📸 <b>Финальная статистика:</b>","",f"• сыграно матчей — <b>{len(matches)}</b>;",f"• сделано прогнозов — <b>{total_preds}</b>;",f"• угадано точных счетов — <b>{total_exact}</b>;",f"• использовано ва-банков — <b>{total_vb}</b>;",f"• заработано матчевых очков — <b>{total_points}</b>.","", "Спасибо всем за участие! Благодаря вам каждый матч стал интереснее ❤️⚽", "", "До следующего турнира!"])
+    recipients=sum(1 for p in players if p["telegram_chat_id"])
+    return ["\n".join(lines1),"\n".join(lines2),"\n".join(nom)], recipients, players
+
+
+@app.post("/api/admin/final-broadcast-preview", dependencies=[Depends(require_admin)])
+def final_broadcast_preview(body: dict):
+    messages, recipients, _ = build_final_broadcast_messages(body.get("nominations"), body.get("personal_message", ""))
+    return {"ok":True,"messages":messages,"recipients":recipients}
+
+
+@app.post("/api/admin/send-final-broadcast", dependencies=[Depends(require_admin)])
+async def send_final_broadcast(body: dict):
+    messages, _, players = build_final_broadcast_messages(body.get("nominations"), body.get("personal_message", ""))
+    force=bool(body.get("force"))
+    with get_db() as db:
+        prior=db.execute("SELECT * FROM final_broadcast_log WHERE id=1").fetchone()
+        if prior and not force:
+            raise HTTPException(409, "Финальная рассылка уже отправлялась. Для повторной отправки требуется подтверждение.")
+    recipients=[p for p in players if p["telegram_chat_id"]]
+    for idx,text in enumerate(messages):
+        tasks=[send_telegram(str(p["telegram_chat_id"]),text) for p in recipients]
+        if tasks: await asyncio.gather(*tasks)
+        if idx < len(messages)-1: await asyncio.sleep(2)
+    with get_db() as db:
+        result=db.execute("SELECT champion FROM tournament_result WHERE id=1").fetchone()
+        db.execute("INSERT INTO final_broadcast_log(id,sent_at,champion) VALUES(1,datetime('now'),?) ON CONFLICT(id) DO UPDATE SET sent_at=datetime('now'),champion=excluded.champion",(result["champion"] if result else "",))
+    return {"ok":True,"sent":len(recipients),"messages":len(messages)}
 
 @app.get("/api/tournament-settings")
 def get_tournament_settings(token: str):

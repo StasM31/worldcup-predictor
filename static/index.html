@@ -915,6 +915,23 @@ body.dark-theme .tourn-banner.done{background:linear-gradient(135deg,#0a2010,#0d
         </div>
         <p class="hint" style="margin-top:6px">Порядок финалистов не важен — баллы начисляются по совпадению команд, а не по колонкам.<br>📬 При сохранении автоматически рассылается сообщение с бонусами и итоговой таблицей всем участникам в Telegram.</p>
       </div>
+      <div class="admin-block" style="border:2px solid var(--gold)">
+        <h3>🏆 Завершение турнира</h3>
+        <p class="hint">После ввода чемпиона сформируй праздничную серию из трёх сообщений. Сначала откроется полный предпросмотр — без подтверждения ничего не отправится.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin:12px 0">
+          <label><input type="checkbox" class="final-nom" value="exact" checked> 🔮 Главный оракул</label>
+          <label><input type="checkbox" class="final-nom" value="outcomes" checked> ✅ Мистер стабильность</label>
+          <label><input type="checkbox" class="final-nom" value="unique" checked> 🦸 Один против всех</label>
+          <label><input type="checkbox" class="final-nom" value="popular" checked> 👥 Самый угадываемый матч</label>
+          <label><input type="checkbox" class="final-nom" value="mystery" checked> 🌪 Главная загадка</label>
+          <label><input type="checkbox" class="final-nom" value="vabank" checked> 🔥 Лучший ва-банк</label>
+          <label><input type="checkbox" class="final-nom" value="photo_finish" checked> 🏁 Фотофиниш</label>
+        </div>
+        <textarea id="final-personal-message" rows="2" placeholder="Необязательное личное поздравление или пожелание участникам" style="width:100%;padding:10px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:'Manrope',sans-serif;resize:vertical"></textarea>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn btn-gold" onclick="showFinalBroadcastPreview()">🎬 Подготовить финальную рассылку</button>
+        </div>
+      </div>
       <div class="admin-block">
         <h3>👋 Приветственное сообщение</h3>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
@@ -2309,6 +2326,50 @@ async function addBatch(){
   if(res.ok){const d=await res.json();document.getElementById('batch-input').value='';toast(`Добавлено: ${d.added} матчей ✅`);loadAdminMatches();loadMatches();}
   else toast('Ошибка','err');
 }
+
+function getFinalBroadcastPayload(){
+  return {
+    nominations:[...document.querySelectorAll('.final-nom:checked')].map(x=>x.value),
+    personal_message:(document.getElementById('final-personal-message')?.value||'').trim()
+  };
+}
+
+async function showFinalBroadcastPreview(){
+  try{
+    const payload=getFinalBroadcastPayload();
+    const res=await fetch('/api/admin/final-broadcast-preview',{
+      method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify(payload)
+    });
+    if(!res.ok){const e=await res.json().catch(()=>({}));toast(e.detail||'Не удалось сформировать финальную рассылку','err');return;}
+    const d=await res.json();
+    const modal=document.createElement('div');modal.className='modal-overlay';
+    const previews=d.messages.map((t,i)=>`<div style="margin-top:${i?18:0}px"><div style="font-weight:800;margin-bottom:6px">Сообщение ${i+1} из ${d.messages.length}</div><div style="white-space:pre-wrap;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);font-size:13px;line-height:1.55;max-height:34vh;overflow:auto">${escapeHtml(t.replace(/<\/?(?:b|s)>/g,''))}</div></div>`).join('');
+    modal.innerHTML=`<div class="modal" style="max-width:650px"><div class="modal-body" style="padding:24px">
+      <h3 style="font-family:'Oswald',sans-serif;margin-bottom:5px">🏆 Финальная рассылка</h3>
+      <p style="font-size:13px;color:var(--muted)">Получателей: <b>${d.recipients}</b>. Будут последовательно отправлены три сообщения.</p>
+      <div style="max-height:67vh;overflow:auto;margin-top:12px;padding-right:4px">${previews}</div>
+      <div style="display:flex;gap:10px;margin-top:16px"><button class="btn btn-ghost" style="flex:1" onclick="this.closest('.modal-overlay').remove()">Вернуться</button><button class="btn btn-gold" style="flex:1" onclick="sendFinalBroadcast(this,false)">🏆 Отправить всем</button></div>
+    </div></div>`;
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});document.body.appendChild(modal);
+  }catch(e){toast('Ошибка сети','err');}
+}
+
+async function sendFinalBroadcast(btn,force){
+  if(!confirm('Отправить праздничную финальную серию всем участникам с подключённым Telegram?'))return;
+  btn.disabled=true;btn.textContent='⏳ Отправляем...';
+  const payload={...getFinalBroadcastPayload(),force};
+  try{
+    const res=await fetch('/api/admin/send-final-broadcast',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':state.adminToken},body:JSON.stringify(payload)});
+    if(res.status===409){
+      const e=await res.json();
+      if(confirm((e.detail||'Рассылка уже отправлялась.')+'\n\nОтправить её повторно?')){btn.disabled=false;btn.textContent='🏆 Отправить всем';return sendFinalBroadcast(btn,true);}
+      btn.disabled=false;btn.textContent='🏆 Отправить всем';return;
+    }
+    if(!res.ok){const e=await res.json().catch(()=>({}));toast(e.detail||'Ошибка отправки','err');btn.disabled=false;btn.textContent='🏆 Отправить всем';return;}
+    const d=await res.json();document.querySelector('.modal-overlay')?.remove();toast(`🏆 Отправлено ${d.messages} сообщения для ${d.sent} участников!`,'ok');
+  }catch(e){toast('Ошибка сети','err');btn.disabled=false;btn.textContent='🏆 Отправить всем';}
+}
+
 function showCustomBroadcast(){
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
